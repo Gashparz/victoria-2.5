@@ -29,6 +29,7 @@ All addresses are VAs of the 3.04 listing; the plugin rebases them at runtime. E
 |---|---|
 | `0x4B8E80` | `Pop_MoveToProvince(Province*, Pop*, bool)` stdcall (used by `move_pop`) |
 | `0x955FD0` | `Pop_SetSize`: ESI = pop, EAX = size; clamps to 2,000,000 and fixes employment on shrink (used by `reduce_pop`) |
+| `0x4B61A0` / `0x4B6290` | add / remove core: stdcall `(Province*, CTag* {tag, index}, bool history)`, then country `+0x1434` = 1 (as the script effects do); cores = CTag vector at province `+0x148` |
 | `0x522310` | `AddAcceptedCulture` (ESI = country) |
 | `0x5F2AE0` | list remove (ESI = list) |
 | `0x4A2F70` / `0x5677B0` | culture / religion lookup (EAX = map) |

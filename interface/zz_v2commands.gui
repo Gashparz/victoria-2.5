@@ -57,8 +57,8 @@ guiTypes = {
 	windowType = {
 		name = "v2cmd_window"
 		backGround = "Background"
-		position = { x = -360 y = -300 }
-		size = { x = 720 y = 600 }
+		position = { x = -360 y = -350 }
+		size = { x = 720 y = 700 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -205,7 +205,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "migrate_all_pops <SPRE> <DIN> [filtre]   pop-urile culturii principale a lui SPRE din tara DIN"
+			text = "migrate_all_pops <DIN> <SPRE> [filtre]   pop-urile culturii principale a lui SPRE din tara DIN"
 			format = left
 			fixedsize = yes
 		}
@@ -216,7 +216,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "      se impart egal in provinciile lui SPRE      ex: migrate_all_pops POL GER"
+			text = "      se impart egal in provinciile lui SPRE      ex: migrate_all_pops GER POL"
 			format = left
 			fixedsize = yes
 		}
@@ -227,7 +227,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "      migrate_all_pops POL GER accepted     = cultura principala + toate culturile acceptate"
+			text = "      migrate_all_pops GER POL accepted     = cultura principala + toate culturile acceptate"
 			format = left
 			fixedsize = yes
 		}
@@ -338,6 +338,50 @@ guiTypes = {
 			maxWidth = 660
 			maxHeight = 18
 			text = "scale_pop <prov> <procent> [filtre]     200 = dublu, 50 = jumatate, 150 = +50%      ex: scale_pop 652 150 farmers"
+			format = left
+			fixedsize = yes
+		}
+			instantTextBoxType = {
+			name = "v2cmd_more0"
+			position = { x = 30 y = 578 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "scale_country_pop <TAG> <procent> [filtre]   toate provinciile tarii      ex: scale_country_pop SER 200 serb"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_more1"
+			position = { x = 30 y = 604 }
+			font = "vic_18"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 22
+			text = "CORE-URI"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_more2"
+			position = { x = 30 y = 628 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "add_core <TAG> <prov> [alte prov]           adauga core      ex: add_core SER 652 653"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_more3"
+			position = { x = 30 y = 648 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "remove_core <TAG> <prov> [alte prov]      scoate core      ex: remove_core TUR 652"
 			format = left
 			fixedsize = yes
 		}

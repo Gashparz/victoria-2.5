@@ -15,12 +15,12 @@ Console commands (single player)
         migrate_pop 123 555 polish catholic farmers
         migrate_pop 123 555 48211 48212
 
-  migrate_all_pops <TO> <FROM> [filters]   all pops of TO's primary culture living in FROM
+  migrate_all_pops <FROM> <TO> [filters]   all pops of TO's primary culture living in FROM
         go to TO's provinces, spread evenly by people (whole pops, biggest first)
-        migrate_all_pops POL GER
-        migrate_all_pops POL GER catholic farmers   only Polish Catholic farmers
-        migrate_all_pops POL GER kashubian           another culture instead of POL's primary
-        migrate_all_pops POL GER accepted            POL's primary + all POL's accepted cultures
+        migrate_all_pops GER POL
+        migrate_all_pops GER POL catholic farmers   only Polish Catholic farmers
+        migrate_all_pops GER POL kashubian           another culture instead of POL's primary
+        migrate_all_pops GER POL accepted            POL's primary + all POL's accepted cultures
 
   accept_culture <TAG> [cultures...]        adds accepted cultures (only the TAG: lists them)
   unaccept_culture <TAG> <cultures...>      removes accepted cultures
@@ -30,6 +30,11 @@ Console commands (single player)
   scale_pop <prov> <percent> [filters]      200 = double, 50 = half, 150 = +50%
         double_pop 652 serb       scale_pop 652 150 farmers
         (the game caps one pop at 2,000,000 people)
+
+  scale_country_pop <TAG> <percent> [filters]   every province the country owns
+        scale_country_pop SER 200 serb
+  add_core <TAG> <prov> [more]              adds the country's core      add_core SER 652 653
+  remove_core <TAG> <prov> [more]           removes it                   remove_core TUR 652
 
 Pop merging: the game merges a moving pop into any pop of the same type and religion,
 ignoring culture (vanilla bug). migrate_pop uses a fixed check (same type, culture AND religion).

@@ -18,11 +18,14 @@ Open the console with `~`. Province ids come from the built-in `showprovinceid` 
 | `list_prov_cultures <prov>` | Lists every pop with its id, type, culture and size, plus totals |
 | `list_prov_religions <prov>` | Same, by religion |
 | `migrate_pop <from> <to> <filters>` | Moves the pops that match **all** filters to another province |
-| `migrate_all_pops <TO> <FROM> [filters] [accepted]` | Moves every pop of TO's primary culture (with `accepted`, also its accepted cultures) from country FROM into TO's provinces, spread evenly |
+| `migrate_all_pops <FROM> <TO> [filters] [accepted]` | Moves every pop of TO's primary culture (with `accepted`, also its accepted cultures) from country FROM into TO's provinces, spread evenly |
 | `accept_culture <TAG> [cultures]` | Adds accepted cultures. With only the tag, it lists them |
 | `unaccept_culture <TAG> <cultures>` | Removes accepted cultures |
 | `double_pop <prov> [filters]` | Doubles pop sizes |
 | `scale_pop <prov> <percent> [filters]` | Scales pop sizes: 200 doubles, 50 halves |
+| `scale_country_pop <TAG> <percent> [filters]` | Same, in every province the country owns |
+| `add_core <TAG> <prov> [more]` | Adds the country's core to provinces |
+| `remove_core <TAG> <prov> [more]` | Removes it |
 
 A **filter** can be a culture (`polish`), a religion (`catholic`), a pop type (`farmers`) or a pop id taken from the list commands.
 
@@ -31,7 +34,9 @@ Examples:
 ```
 convert_pop 652 serb - bulgarian farmers
 migrate_pop 123 555 polish catholic
-migrate_all_pops POL GER accepted
+migrate_all_pops GER POL accepted
+scale_country_pop SER 200 serb
+add_core SER 652 653
 double_pop 652 serb
 ```
 

@@ -520,6 +520,17 @@ extern "C" ConsoleResult* __cdecl cmd_convert_pop(ConsoleResult* out, ArgVector*
 // previous size at +0x5C for the growth display and fixes employment when a pop shrinks).
 constexpr uintptr_t VA_POP_SETSIZE = 0x00955FD0;
 
+void scale_pops(const uintptr_t* pops, int n, uint32_t pct, uint64_t* before, uint64_t* after, int* capped) {
+    for (int i = 0; i < n; ++i) {
+        uint32_t size = rd<uint32_t>(pops[i] + 0x58);
+        uint64_t want = (uint64_t)size * pct / 100;
+        if (want > 2000000) { want = 2000000; ++*capped; }
+        *before += size;
+        tcp_setsize_thunk(R(VA_POP_SETSIZE), pops[i], (uint32_t)want);
+        *after += rd<uint32_t>(pops[i] + 0x58);
+    }
+}
+
 ConsoleResult* scale_cmd(ConsoleResult* out, ArgVector* args, bool is_double) {
     const char* cmd = is_double ? "double_pop" : "scale_pop";
     init_result(out);
@@ -550,14 +561,7 @@ ConsoleResult* scale_cmd(ConsoleResult* out, ArgVector* args, bool is_double) {
 
     uint64_t before = 0, after = 0;
     int capped = 0;
-    for (int i = 0; i < n; ++i) {
-        uint32_t size = rd<uint32_t>(pops[i] + 0x58);
-        uint64_t want = (uint64_t)size * pct / 100;
-        if (want > 2000000) { want = 2000000; ++capped; }
-        before += size;
-        tcp_setsize_thunk(R(VA_POP_SETSIZE), pops[i], (uint32_t)want);
-        after += rd<uint32_t>(pops[i] + 0x58);
-    }
+    scale_pops(pops, n, pct, &before, &after, &capped);
     logf("%s %u (%u%%): %d pops, %llu -> %llu", cmd, id, pct, n, (unsigned long long)before, (unsigned long long)after);
     return reply(out, true, "Province %u: %d %spops x%u%%: %llu -> %llu people.%s", id, n, filter.any() ? "matching " : "", pct,
                  (unsigned long long)before, (unsigned long long)after,
@@ -674,7 +678,7 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_pop(ConsoleResult* out, ArgVector*
 }
 
 // ================= migrate_all_pops =================
-// migrate_all_pops <TO tag> <FROM tag> [filters]
+// migrate_all_pops <FROM tag> <TO tag> [filters]
 //   Takes every pop owned by FROM whose culture is TO's primary culture (or the filters given) and
 //   spreads them over TO's provinces so every province receives about the same number of people
 //   (whole pops, biggest first, each to the province that has received the least so far).
@@ -714,10 +718,10 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVe
     if (ConsoleResult* g = gate(out)) return g;
     if (!g_merge_fix_ok) return reply(out, false, "migrate_all_pops: disabled, the pop merge fix could not be installed.");
     if (arg_count(args) < 2)
-        return reply(out, false, "Usage: migrate_all_pops <TO tag> <FROM tag> [accepted] [culture|religion|pop type filters]  e.g. migrate_all_pops POL GER accepted");
+        return reply(out, false, "Usage: migrate_all_pops <FROM tag> <TO tag> [accepted] [culture|religion|pop type filters]  e.g. migrate_all_pops GER POL accepted");
 
-    const char* to_tag = arg_text(args, 0);
-    const char* from_tag = arg_text(args, 1);
+    const char* from_tag = arg_text(args, 0);
+    const char* to_tag = arg_text(args, 1);
     int to_i = country_index(to_tag), from_i = country_index(from_tag);
     if (to_i < 0) return reply(out, false, "migrate_all_pops: unknown country '%s'.", to_tag);
     if (from_i < 0) return reply(out, false, "migrate_all_pops: unknown country '%s'.", from_tag);
@@ -870,6 +874,100 @@ ConsoleResult* culture_cmd(ConsoleResult* out, ArgVector* args, bool add) {
 extern "C" ConsoleResult* __cdecl cmd_accept_culture(ConsoleResult* out, ArgVector* args) { return culture_cmd(out, args, true); }
 extern "C" ConsoleResult* __cdecl cmd_unaccept_culture(ConsoleResult* out, ArgVector* args) { return culture_cmd(out, args, false); }
 
+
+// ================= scale_country_pop =================
+extern "C" ConsoleResult* __cdecl cmd_scale_country_pop(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 2)
+        return reply(out, false, "Usage: scale_country_pop <TAG> <percent, 200 = double> [filters: culture/religion/pop type]  e.g. scale_country_pop SER 200 serb");
+    const char* tag = arg_text(args, 0);
+    int ci = country_index(tag);
+    if (ci < 0) return reply(out, false, "scale_country_pop: unknown country '%s'.", tag);
+    uint32_t pct = 0;
+    if (!parse_uint(arg_text(args, 1), &pct) || pct < 1 || pct > 1000)
+        return reply(out, false, "scale_country_pop: percent must be 1..1000 (200 = double, 50 = half).");
+    Filter filter;
+    if (const char* bad = parse_filters(args, 2, &filter))
+        return reply(out, false, "scale_country_pop: '%s' is not a culture, religion or pop type.", bad);
+    if (filter.accepted || filter.n_ids) return reply(out, false, "scale_country_pop: filters are culture, religion and pop type.");
+
+    static uintptr_t provs[4096];
+    int np = owned_provinces(ci, provs, 4096);
+    if (!np) return reply(out, false, "scale_country_pop: %s owns no provinces.", tag);
+    static uintptr_t pops[65536];
+    int n = 0;
+    for (int i = 0; i < np; ++i)
+        for_each_pop(provs[i], [&](uintptr_t pop, int t) {
+            if (n < 65536 && pop_alive(pop) && filter.match(pop, t)) pops[n++] = pop;
+        });
+    if (!n) return reply(out, false, "scale_country_pop: no %spops in %s's %d provinces.", filter.any() ? "matching " : "", tag, np);
+    uint64_t before = 0, after = 0;
+    int capped = 0;
+    scale_pops(pops, n, pct, &before, &after, &capped);
+    logf("scale_country_pop %s %u%%: %d pops in %d provinces, %llu -> %llu", tag, pct, n, np, (unsigned long long)before,
+         (unsigned long long)after);
+    return reply(out, true, "%s: %d %spops in %d provinces x%u%%: %llu -> %llu people.%s", tag, n, filter.any() ? "matching " : "", np, pct,
+                 (unsigned long long)before, (unsigned long long)after, capped ? " (some pops hit the game's 2,000,000 limit)" : "");
+}
+
+// ================= add_core / remove_core =================
+// Same calls as the add_core / remove_core script effects (0x0087E760 / 0x0087F510):
+// __stdcall fn(Province*, CTag* {tag, country index}, bool history) then country+0x1434 = 1 (refresh).
+// Cores of a province: vector of CTag (8 bytes, index at +4) at province +0x148/+0x14C.
+constexpr uintptr_t VA_ADD_CORE = 0x004B61A0, VA_REMOVE_CORE = 0x004B6290;
+typedef void(__stdcall* CoreFn)(uintptr_t prov, uint32_t* tag, uint32_t history);
+
+bool province_has_core(uintptr_t prov, uint32_t index) {
+    uint32_t* b = rd<uint32_t*>(prov + 0x148);
+    uint32_t* e = rd<uint32_t*>(prov + 0x14C);
+    for (uint32_t* it = b; b && it < e; it += 2)
+        if (it[1] == index) return true;
+    return false;
+}
+
+ConsoleResult* core_cmd(ConsoleResult* out, ArgVector* args, bool add) {
+    const char* cmd = add ? "add_core" : "remove_core";
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 2) return reply(out, false, "Usage: %s <TAG> <province id> [more province ids]", cmd);
+    char tag[4] = {0};
+    const char* tag_in = arg_text(args, 0);
+    if (strlen(tag_in) != 3) return reply(out, false, "%s: '%s' is not a country tag.", cmd, tag_in);
+    for (int i = 0; i < 3; ++i) tag[i] = (char)toupper((unsigned char)tag_in[i]);
+    void* mgr = rd<void*>(R(VA_G_COUNTRIES));
+    uint32_t ctag[2] = {0, 0};
+    if (mgr) reinterpret_cast<CountryByTagFn>(R(VA_COUNTRY_BY_TAG))(mgr, ctag, tag);
+    if (!ctag[1]) return reply(out, false, "%s: unknown country '%s'.", cmd, tag);
+    CoreFn fn = reinterpret_cast<CoreFn>(R(add ? VA_ADD_CORE : VA_REMOVE_CORE));
+
+    Text t;
+    int done = 0, skipped = 0;
+    for (int i = 1; i < arg_count(args); ++i) {
+        uint32_t id = 0;
+        uintptr_t prov = parse_uint(arg_text(args, i), &id) ? get_province(id) : 0;
+        if (!prov) { t.add("'%s' is not a province id.\n", arg_text(args, i)); ++skipped; continue; }
+        if (province_has_core(prov, ctag[1]) == add) {
+            t.add("%u: %s %s a core there.\n", id, tag, add ? "already has" : "has no");
+            ++skipped;
+            continue;
+        }
+        uint32_t c[2] = {ctag[0], ctag[1]};
+        fn(prov, c, 1);
+        ++done;
+        t.add("%u: %s core %s.\n", id, tag, add ? "added" : "removed");
+    }
+    if (done) {
+        uintptr_t country = country_at((int)ctag[1]);
+        if (country) *reinterpret_cast<uint8_t*>(country + 0x1434) = 1;
+    }
+    logf("%s %s: %d changed, %d skipped", cmd, tag, done, skipped);
+    t.add("%s %s: %d province(s) changed.", cmd, tag, done);
+    return finish(out, done > 0, t);
+}
+extern "C" ConsoleResult* __cdecl cmd_add_core(ConsoleResult* out, ArgVector* args) { return core_cmd(out, args, true); }
+extern "C" ConsoleResult* __cdecl cmd_remove_core(ConsoleResult* out, ArgVector* args) { return core_cmd(out, args, false); }
+
 // ================= console table extension =================
 struct NewCommand {
     const char* name;
@@ -892,8 +990,8 @@ const NewCommand kCommands[] = {
      "Moves the pops of a province that match the filters (culture, religion, pop type or pop id) to another province.",
      (void*)&cmd_migrate_pop, 4, {"from province", "to province", "culture|religion|type|pop id", "<more filters>"}},
     {"migrate_all_pops", "migrateallpops",
-     "Moves every pop of the first country's primary culture living in the second country into the first country, spread evenly.",
-     (void*)&cmd_migrate_all_pops, 3, {"TO tag", "FROM tag", "<filters>"}},
+     "Moves every pop of the second country's primary culture living in the first country into the second country, spread evenly.",
+     (void*)&cmd_migrate_all_pops, 3, {"FROM tag", "TO tag", "<filters>"}},
     {"accept_culture", "acceptculture", "Adds accepted cultures to a country (only the tag: lists them).",
      (void*)&cmd_accept_culture, 2, {"country tag", "<cultures>"}},
     {"unaccept_culture", "unacceptculture", "Removes accepted cultures from a country.",
@@ -902,6 +1000,10 @@ const NewCommand kCommands[] = {
      (void*)&cmd_double_pop, 2, {"province id", "<filters>"}},
     {"scale_pop", "scalepop", "Multiplies the size of the pops of a province by a percentage (200 = double, 50 = half).",
      (void*)&cmd_scale_pop, 3, {"province id", "percent", "<filters>"}},
+    {"scale_country_pop", "scalecountrypop", "Multiplies the pops of every province a country owns (optionally one culture/religion/type) by a percentage.",
+     (void*)&cmd_scale_country_pop, 3, {"country tag", "percent", "<filters>"}},
+    {"add_core", "addcore", "Adds a country's core to one or more provinces.", (void*)&cmd_add_core, 2, {"country tag", "province ids"}},
+    {"remove_core", "removecore", "Removes a country's core from one or more provinces.", (void*)&cmd_remove_core, 2, {"country tag", "province ids"}},
 };
 constexpr int kNew = sizeof(kCommands) / sizeof(kCommands[0]);
 constexpr int kTotal = kVanillaCount + kNew;
@@ -1184,7 +1286,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-23 (any mod + topbar tab + double_pop)");
+    logf("TGC Convert Pop build 2026-10-23b (scale_country_pop, add/remove_core, migrate_all_pops FROM TO)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
