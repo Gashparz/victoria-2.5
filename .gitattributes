@@ -1,0 +1,7 @@
+*.gui text eol=crlf
+*.gfx text eol=crlf
+*.ini text eol=crlf
+*.mod text eol=crlf
+*.cmd text eol=crlf
+*.txt text eol=crlf
+*.sh  text eol=lf

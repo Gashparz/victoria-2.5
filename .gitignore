@@ -1,0 +1,7 @@
+*.dll
+*.o
+*.obj
+dist/
+save-editor/Victoria2 Save Editor.html
+*.v2
+__pycache__/

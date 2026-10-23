@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Victoria II Save Editor</title>
+<style>
+:root {
+  --sea: #9fb7c9;
+  --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1c19; --muted: #6b675e; --line: #dedad0;
+  --accent: #8a2d1f; --accent-ink: #ffffff; --soft: #f0ece2; --warn: #9a6200; --ok: #2e6b3a; --bad: #a3271b;
+  --sel: #f3e3d9; --input: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --sea: #1d2a36; --bg: #161513; --panel: #1f1e1b; --ink: #ece9e1; --muted: #a39e93; --line: #36342f; --accent: #d9735f;
+    --accent-ink: #1a0c08; --soft: #2a2825; --warn: #e0a640; --ok: #7cc48a; --bad: #ff8a7a; --sel: #3a2a24; --input: #171614; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 16px; }
+header h1 { font-size: 16px; margin: 0 12px 0 0; letter-spacing: .2px; }
+button, .btn { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--soft);
+  color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.small { padding: 2px 8px; font-size: 12px; }
+button:disabled { opacity: .45; cursor: default; }
+input, select, textarea { font: inherit; color: var(--ink); background: var(--input); border: 1px solid var(--line);
+  border-radius: 5px; padding: 4px 6px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+#status { color: var(--muted); font-size: 13px; margin-left: auto; }
+#status.dirty { color: var(--warn); }
+nav { display: flex; gap: 2px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; }
+nav button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 10px 14px; color: var(--muted); }
+nav button.on { color: var(--ink); border-bottom-color: var(--accent); }
+main { padding: 16px; }
+.split { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 16px; align-items: start; }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.list { max-height: calc(100vh - 210px); overflow: auto; margin-top: 8px; }
+.list div { padding: 5px 8px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 8px; }
+.list div:hover { background: var(--soft); }
+.list div.on { background: var(--sel); }
+.list small, .muted { color: var(--muted); }
+h2 { font-size: 18px; margin: 0 0 4px; }
+h3 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 14px; }
+.grid label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+.grid label input, .grid label select { color: var(--ink); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--line); padding: 4px 6px; text-align: left; white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--panel); }
+td input { width: 100%; min-width: 80px; padding: 2px 4px; }
+td input[data-pf=culture], td input[data-pf=religion] { min-width: 150px; }
+td.num, th.num { text-align: right; }
+.tablewrap { overflow: auto; max-height: 60vh; border: 1px solid var(--line); border-radius: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { background: var(--soft); border: 1px solid var(--line); border-radius: 999px; padding: 2px 4px 2px 10px; display: inline-flex; gap: 4px; align-items: center; }
+.chip button { border: 0; background: none; padding: 0 4px; color: var(--muted); }
+.note { font-size: 13px; color: var(--muted); }
+.warn { color: var(--warn); }
+.okc { color: var(--ok); }
+.bad { color: var(--bad); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.empty { padding: 48px 16px; text-align: center; color: var(--muted); }
+.empty h2 { color: var(--ink); }
+textarea.raw { width: 100%; min-height: 60vh; font: 12px/1.35 ui-monospace, Consolas, monospace; white-space: pre; }
+#toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+  padding: 8px 14px; border-radius: 6px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; }
+#toast.on { opacity: 1; }
+.mapwrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; }
+@media (max-width: 900px) { .mapwrap { grid-template-columns: 1fr; } }
+#mapHost { position: relative; height: calc(100vh - 150px); min-height: 360px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--sea); touch-action: none; }
+.mapcv { position: absolute; left: 0; top: 0; display: block; cursor: grab; }
+.mapcv:active { cursor: grabbing; }
+.maptip { position: absolute; display: none; pointer-events: none; background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.25); max-width: 260px; z-index: 2; }
+.mapside { max-height: calc(100vh - 150px); overflow: auto; }
+.legend div { display: flex; align-items: center; gap: 6px; font-size: 12px; margin: 2px 0; }
+.sw { width: 12px; height: 12px; border-radius: 2px; flex: none; border: 1px solid rgba(0,0,0,.2); }
+.bar { height: 6px; background: var(--accent); border-radius: 3px; }
+.maploading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); }
+details summary { cursor: pointer; color: var(--muted); margin: 12px 0 6px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Victoria II Save Editor</h1>
+  <button class="primary" id="bOpen">Deschide salvarea</button>
+  <button id="bMod">Adaugă folder joc/mod</button>
+  <button id="bUndo" disabled>Anulează</button>
+  <button id="bSaveAs" disabled>Salvează ca…</button>
+  <button id="bSave" disabled>Suprascrie</button>
+  <span id="status">Nicio salvare deschisă</span>
+</header>
+<nav id="tabs">
+  <button data-tab="countries" class="on">Țări</button>
+  <button data-tab="provinces">Provincii</button>
+  <button data-tab="map">Hartă</button>
+  <button data-tab="bulk">Conversie în masă</button>
+  <button data-tab="raw">Text brut</button>
+  <button data-tab="mods">Date mod</button>
+</nav>
+<main id="main"></main>
+<div id="toast"></div>
+<input type="file" id="fileIn" accept=".v2" class="hidden">
+<input type="file" id="dirIn" webkitdirectory class="hidden">
+
+<script>/*CORE*/</script>
+<script>/*OPS*/</script>
+<script>/*MOD*/</script>
+<script>/*PACK*/</script>
+<script>/*MAP*/</script>
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (n) => Number(n).toLocaleString("ro-RO");
+const S = { save: null, handle: null, tab: "countries", country: null, province: null, owners: new Map(), showDead: false, qC: "", qP: "", rawKey: "" };
+const D = ModData.data;
+
+function toast(msg, ms = 2600) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), ms); }
+function status() {
+  const st = $("#status");
+  if (!S.save) { st.textContent = "Nicio salvare deschisă"; st.className = ""; }
+  else {
+    const n = S.save.steps();
+    st.textContent = `${S.save.name} · ${S.save.date || ""} · ${n === 1 ? "1 modificare nesalvată" : n ? n + " modificări nesalvate" : "nemodificat"}` + (D.folders.length ? ` · date: ${D.folders.map((f) => f.name).join(" + ")}` : "");
+    st.className = S.save.dirty ? "dirty" : "";
+  }
+  $("#bUndo").disabled = !S.save || !S.save.undo.length;
+  $("#bSaveAs").disabled = $("#bSave").disabled = !S.save;
+}
+// names
+const V = V2.display;
+const cname = (tag) => ModData.name(tag) || tag;
+const pname = (p) => V(p.name) || ModData.name("PROV" + p.id) || "#" + p.id;
+const culName = (c) => (ModData.name(c) ? `${ModData.name(c)} (${c})` : c);
+function knownCultures() {
+  if (D.cultures.size) return [...D.cultures.keys()];
+  const s = new Set(); for (const p of S.allProv || []) for (const x of p.pops) s.add(x.culture); return [...s].sort();
+}
+function knownReligions() {
+  if (D.religions.size) return [...D.religions.keys()];
+  const s = new Set(); for (const p of S.allProv || []) for (const x of p.pops) s.add(x.religion); return [...s].sort();
+}
+function knownTypes() {
+  if (D.poptypes.length) return D.poptypes;
+  const s = new Set(); for (const p of S.allProv || []) for (const x of p.pops) s.add(x.type); return [...s].sort();
+}
+function datalists() {
+  const mk = (id, arr, label) => `<datalist id="${id}">${arr.map((x) => `<option value="${esc(x)}">${esc(label ? label(x) : "")}</option>`).join("")}</datalist>`;
+  return mk("dlCul", knownCultures(), (c) => ModData.name(c) || "") + mk("dlRel", knownReligions(), (c) => ModData.name(c) || "") +
+    mk("dlTag", [...S.save.countries.keys()], (t) => cname(t));
+}
+function checkCulture(v) { return !v || !D.cultures.size || D.cultures.has(v); }
+function checkReligion(v) { return !v || !D.religions.size || D.religions.has(v); }
+
+// ---------- loading ----------
+async function openSave() {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types: [{ description: "Victoria II save", accept: { "text/plain": [".v2"] } }] });
+      await loadFile(await h.getFile(), h);
+    } catch (e) { if (e.name !== "AbortError") toast("Eroare: " + e.message); }
+  } else $("#fileIn").click();
+}
+$("#fileIn").onchange = (e) => e.target.files[0] && loadFile(e.target.files[0], null);
+async function loadFile(file, handle) {
+  $("#main").innerHTML = `<div class="empty"><h2>Se încarcă ${esc(file.name)}…</h2><p>${fmt(file.size)} octeți</p></div>`;
+  await new Promise((r) => setTimeout(r, 30));
+  try {
+    const txt = V2.bytesToStr(new Uint8Array(await file.arrayBuffer()));
+    const sv = new V2.Save(txt, file.name);
+    const di = sv.top.get("date"); sv.date = di !== undefined ? V2.unq(sv.tree(di, 0).v) : "";
+    const pl = sv.top.get("player"); sv.player = pl !== undefined ? V2.unq(sv.tree(pl, 0).v) : "";
+    S.save = sv; S.handle = handle; S.country = sv.player || null; S.province = null;
+    refreshIndex();
+    status(); render();
+    toast(`Încărcat: ${fmt(sv.provinces.size)} provincii, ${fmt(sv.countries.size)} țări`);
+  } catch (e) { console.error(e); $("#main").innerHTML = `<div class="empty"><h2 class="bad">Nu am putut citi fișierul</h2><p>${esc(e.message)}</p></div>`; }
+}
+function refreshIndex() { S.allProv = S.save.allProvinces(); S.owners = S.save.ownersIndex(); }
+
+async function addFolder() {
+  if (window.showDirectoryPicker) {
+    try { const h = await showDirectoryPicker({ id: "v2data", mode: "read" }); await useSource(ModData.fromHandle(h)); }
+    catch (e) {
+      if (e.name === "AbortError") return;
+      // Chrome refuses folders under Program Files: use the classic folder upload instead
+      S.tab = "mods"; S.needClassic = true; render();
+      toast("Browserul nu dă acces direct la acest folder. Folosește butonul „Alege folder (metoda clasică)”.", 6000);
+    }
+  } else $("#dirIn").click();
+}
+$("#dirIn").onchange = async (e) => { if (e.target.files.length) await useSource(ModData.fromFileList(e.target.files)); e.target.value = ""; };
+// A game folder (v2game.exe / mod\*.mod) opens the mod picker; any other folder is added as one more layer.
+async function useSource(src) {
+  toast("Citesc folderul…");
+  const mods = await ModData.scanGame(src);
+  if (mods) { S.game = { src, mods }; S.tab = "mods"; render(); toast(`Am găsit ${mods.length} mod-uri. Bifează-le pe cele cu care joci.`, 4000); return; }
+  D.folders.push(src); await afterFolders();
+}
+function savedMods() { try { return JSON.parse(localStorage.getItem("v2se.mods") || "[]"); } catch { return []; } }
+async function applyMods(chosen) {
+  try { localStorage.setItem("v2se.mods", JSON.stringify(chosen)); } catch {}
+  D.folders = ModData.layersFor(S.game.src, S.game.mods, chosen);
+  S.mapCache = null;
+  await afterFolders();
+}
+async function afterFolders() {
+  toast("Citesc datele…");
+  await ModData.reload((what) => { $("#status").textContent = "Citesc " + what + "…"; });
+  ModData.remember();
+  toast(`Date: ${fmt(D.cultures.size)} culturi, ${fmt(D.religions.size)} religii, ${D.poptypes.length} tipuri de pop, ${fmt(D.loc.size)} texte`);
+  status(); render();
+}
+async function restoreFolders() {
+  const hs = await ModData.recall();
+  if (!hs.length) { if (typeof BUILTIN_PACK !== "undefined") { D.folders.push(ModData.fromPack(BUILTIN_PACK)); await ModData.reload(); } return; }
+  const ok = [];
+  for (const h of hs) { try { if ((await h.queryPermission({ mode: "read" })) === "granted") ok.push(h); } catch {} }
+  if (ok.length === hs.length) { await restoreHandles(ok); status(); render(); }
+  else S.pendingFolders = hs;
+}
+async function restoreHandles(hs) {
+  for (const h of hs) {
+    const src = ModData.fromHandle(h), mods = await ModData.scanGame(src);
+    if (mods) { S.game = { src, mods }; D.folders = ModData.layersFor(src, mods, savedMods()); }
+    else D.folders.push(src);
+  }
+  if (!D.folders.length && typeof BUILTIN_PACK !== "undefined") D.folders.push(ModData.fromPack(BUILTIN_PACK));
+  await ModData.reload();
+}
+async function grantFolders() {
+  if (typeof BUILTIN_PACK !== "undefined" && !D.folders.length) D.folders.push(ModData.fromPack(BUILTIN_PACK));
+  for (const h of S.pendingFolders || []) { try { if ((await h.requestPermission({ mode: "read" })) === "granted") D.folders.push(ModData.fromHandle(h)); } catch {} }
+  S.pendingFolders = null; await afterFolders();
+}
+
+// ---------- saving ----------
+async function writeTo(handle) {
+  const w = await handle.createWritable();
+  await w.write(V2.strToBytes(S.save.text()));
+  await w.close();
+}
+async function saveAs() {
+  const base = S.save.name.replace(/\.v2$/i, "");
+  if (window.showSaveFilePicker) {
+    try {
+      const h = await showSaveFilePicker({ suggestedName: base + "_edit.v2", types: [{ description: "Victoria II save", accept: { "text/plain": [".v2"] } }] });
+      await writeTo(h); S.handle = h; S.save.name = h.name; S.save.dirty = false; S.save.undo = []; status(); toast("Salvat: " + h.name);
+    } catch (e) { if (e.name !== "AbortError") toast("Eroare la salvare: " + e.message); }
+  } else {
+    const blob = new Blob([V2.strToBytes(S.save.text())], { type: "application/octet-stream" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = base + "_edit.v2"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("Descărcat " + a.download + " — mută-l în folderul save games");
+  }
+}
+async function saveOver() {
+  if (!S.handle) return saveAs();
+  if (!confirm(`Suprascriu ${S.save.name}? Fișierul vechi se pierde.`)) return;
+  try {
+    const perm = await S.handle.requestPermission({ mode: "readwrite" });
+    if (perm !== "granted") return toast("Fără permisiune de scriere");
+    await writeTo(S.handle); S.save.dirty = false; S.save.undo = []; status(); toast("Salvat peste " + S.save.name);
+  } catch (e) { toast("Eroare la salvare: " + e.message); }
+}
+window.addEventListener("beforeunload", (e) => { if (S.save && S.save.dirty) { e.preventDefault(); e.returnValue = ""; } });
+
+// ---------- edits ----------
+function did(changed, msg) {
+  if (changed) { S.owners = S.save.ownersIndex(); S.allProv = S.save.allProvinces(); S.ver = (S.ver || 0) + 1; }
+  status(); render(); if (msg) toast(msg);
+}
+function undo() { const u = S.save.undoLast(); if (u) did(true, "Anulat: " + (u.label || "modificare")); }
+
+// ---------- render ----------
+function render() {
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === S.tab));
+  const m = $("#main");
+  if (S.tab === "mods") return (m.innerHTML = renderMods());
+  if (!S.save) {
+    m.innerHTML = `<div class="empty"><h2>Deschide o salvare .v2</h2>
+      <p>Salvările sunt în <b>Documents\\Paradox Interactive\\Victoria II\\&lt;mod&gt;\\save games</b> (de ex. TGC sau GFM).</p>
+      <p>Merge cu orice mod. Ca să ai numele, culorile și harta mod-ului tău (TGC, GFM…), alege folderul jocului în tab-ul <b>Date mod</b> și bifează mod-urile.</p>
+      ${S.pendingFolders ? `<p><button id="bGrant">Folosește din nou folderele de data trecută</button></p>` : ""}
+      <p class="note">Totul rulează local în browser. Fișierul se modifică doar când apeși Salvează.</p></div>`;
+    const g = $("#bGrant"); if (g) g.onclick = grantFolders;
+    return;
+  }
+  if (S.tab === "map") return renderMap();
+  if (S.mapView) { S.mapState = S.mapView.state(); S.mapView.destroy(); S.mapView = null; }
+  if (S.tab === "countries") m.innerHTML = renderCountries();
+  else if (S.tab === "provinces") m.innerHTML = renderProvinces();
+  else if (S.tab === "bulk") m.innerHTML = renderBulk();
+  else if (S.tab === "raw") m.innerHTML = renderRaw();
+  bind();
+}
+
+function renderMods() {
+  const f = D.folders, g = S.game;
+  const chosen = new Set(g && f.length && !f[0].pack && f[0].name === "Victoria II" ? f.slice(1).map((x) => x.name) : savedMods());
+  const pick = g ? `<h3>Mod-uri găsite în ${esc(g.src.name)}</h3>
+    <p class="note">Bifează exact ce bifezi în launcher. Dependențele (de ex. TGC pentru un submod TGC) se adaugă singure.</p>
+    <div class="list" style="max-height:340px">${g.mods.slice().sort((a, b) => a.name.localeCompare(b.name)).map((m) =>
+      `<label style="display:flex;gap:8px;padding:4px 6px"><input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>
+        <span>${esc(m.name)} <small>${esc(m.path)}${m.deps.length ? " · cere " + esc(m.deps.join(", ")) : ""}${m.replace.length ? " · înlocuiește " + esc(m.replace.join(", ")) : ""}</small></span></label>`).join("")}</div>
+    <div class="row" style="margin-top:8px"><button class="primary" id="bUseMods">Folosește aceste mod-uri</button><button id="bVanilla">Doar jocul de bază</button></div>` : "";
+  return `<div class="panel"><h2>Date joc / mod</h2>
+    <p class="note">Ca editorul să știe culturile, religiile, numele provinciilor, culorile și harta mod-ului tău (TGC, GFM sau oricare), alege <b>folderul jocului</b> (<b>Victoria 2</b>, cel cu v2game.exe), apoi bifează mod-urile. Editorul le combină exact ca jocul: fișierele mod-ului le înlocuiesc pe cele ale jocului, iar <i>replace_path</i> e respectat.</p>
+    <p class="note">Pentru <b>Program Files</b> folosește „metoda clasică”: browserul întreabă dacă încarci fișierele, dar ele rămân pe calculatorul tău. Până alegi, editorul arată numele interne (polish, catholic) și nu are hartă.</p>
+    <div class="row"><button class="primary" id="bClassic">Alege folderul jocului (metoda clasică)</button><button id="bMod2">Alege folder (acces direct)</button>${typeof BUILTIN_PACK !== "undefined" && !f.some((x) => x.pack) ? `<button id="bPack">Adaugă pachetul TGC inclus</button>` : ""}${S.pendingFolders ? `<button id="bGrant2">Folosește folderele de data trecută</button>` : ""}</div>
+    ${pick}
+    <h3>În uz acum (de jos în sus, ultimul câștigă)</h3>
+    ${f.length ? `<ol>${f.map((x, i) => `<li>${esc(x.name)}${x.replace && x.replace.length ? ` <small class="muted">înlocuiește ${esc(x.replace.join(", "))}</small>` : ""} <button class="small" data-rmf="${i}">scoate</button></li>`).join("")}</ol>` : `<p class="muted">Nimic. Editorul merge și așa, cu numele luate din salvare.</p>`}
+    <p>${fmt(D.cultures.size)} culturi în ${fmt(D.groups.size)} grupuri · ${fmt(D.religions.size)} religii · ${D.poptypes.length} tipuri de pop · ${fmt(D.loc.size)} texte · ${fmt(D.tagColors.size)} culori de țări · hartă: ${D.mapSource ? esc(D.mapSource.name) : "nu"}</p></div>`;
+}
+
+// ---- countries ----
+function renderCountries() {
+  const sv = S.save, q = S.qC.toLowerCase();
+  const rows = [...sv.countries.keys()].filter((t) => (S.showDead || S.owners.has(t)) && (!q || t.toLowerCase().includes(q) || cname(t).toLowerCase().includes(q)))
+    .sort((a, b) => (S.owners.get(b)?.people || 0) - (S.owners.get(a)?.people || 0));
+  const list = rows.slice(0, 800).map((t) => `<div data-c="${t}" class="${t === S.country ? "on" : ""}"><span>${esc(cname(t))} <small>${t}</small></span><small>${S.owners.has(t) ? fmt(S.owners.get(t).people) : "–"}</small></div>`).join("");
+  return `<div class="split"><div class="panel">
+    <input id="qC" placeholder="Caută țară (nume sau tag)" value="${esc(S.qC)}" style="width:100%">
+    <label class="note"><input type="checkbox" id="dead" ${S.showDead ? "checked" : ""}> arată și țările fără provincii</label>
+    <div class="list">${list || '<p class="muted">Nimic găsit</p>'}</div></div>
+    <div class="panel">${S.country && sv.countries.has(S.country) ? countryDetail(S.country) : '<p class="muted">Alege o țară.</p>'}</div></div>${datalists()}`;
+}
+const CFIELDS = [["money", "Bani"], ["prestige", "Prestigiu"], ["badboy", "Infamie"], ["research_points", "Puncte cercetare"],
+  ["leadership", "Leadership"], ["plurality", "Pluralitate"], ["revanchism", "Revanșism"], ["diplomatic_points", "Puncte diplomatice"],
+  ["suppression", "Suprimare"], ["capital", "Capitala (ID provincie)"], ["civilized", "Civilizată (yes/no)"], ["tax_base", "Bază impozitare"]];
+function countryDetail(tag) {
+  const c = S.save.country(tag), o = S.owners.get(tag);
+  const sc = Object.fromEntries(c.scalars.map((n) => [n.k, n]));
+  const fld = (k, label) => sc[k] ? `<label>${label}<input data-cf="${k}" value="${esc(V2.unq(sc[k].v))}"></label>` : "";
+  const provs = S.allProv.filter((p) => p.owner === tag);
+  const cult = new Map();
+  for (const p of provs) for (const x of p.pops) cult.set(x.culture, (cult.get(x.culture) || 0) + x.size);
+  const top = [...cult].sort((a, b) => b[1] - a[1]).slice(0, 12);
+  return `<h2>${esc(cname(tag))} <span class="muted">${tag}</span></h2>
+    <p class="note">${o ? `${fmt(o.provinces)} provincii · ${fmt(o.pops)} pop-uri · ${fmt(o.people)} oameni` : "Nu deține provincii"}${tag === S.save.player ? " · țara jucătorului" : ""}</p>
+    <h3>Cultură și religie</h3>
+    <div class="grid">
+      <label>Cultura principală<input data-cf="primary_culture" list="dlCul" value="${esc(c.primary)}"></label>
+      <label>Religia de stat<input data-cf="religion" list="dlRel" value="${esc(c.religion)}"></label>
+    </div>
+    <h3>Culturi acceptate</h3>
+    <div class="chips">${c.accepted.map((a) => `<span class="chip">${esc(culName(a))}<button title="Scoate" data-unacc="${esc(a)}">×</button></span>`).join("") || '<span class="muted">niciuna</span>'}
+      <input id="accIn" list="dlCul" placeholder="adaugă cultură" style="width:180px"><button class="small" id="accAdd">Adaugă</button></div>
+    <h3>Valori</h3>
+    <div class="grid">${CFIELDS.map(([k, l]) => fld(k, l)).join("")}</div>
+    <h3>Cele mai mari culturi din țară</h3>
+    <table><tr><th>Cultură</th><th class="num">Oameni</th><th class="num">%</th></tr>
+    ${top.map(([k, v]) => `<tr><td>${esc(culName(k))}${k === c.primary ? " · principală" : c.accepted.includes(k) ? " · acceptată" : ""}</td><td class="num">${fmt(v)}</td><td class="num">${o && o.people ? ((100 * v) / o.people).toFixed(1) : ""}</td></tr>`).join("")}</table>
+    <h3>Provincii (${provs.length})</h3>
+    <div class="chips">${provs.slice(0, 300).map((p) => `<button class="small" data-goto="${p.id}">${esc(pname(p))} <span class="muted">${p.id}</span></button>`).join("")}${provs.length > 300 ? " …" : ""}</div>
+    <details><summary>Toate câmpurile simple ale țării (${c.scalars.length})</summary>
+      <div class="tablewrap"><table><tr><th>Cheie</th><th>Valoare</th></tr>
+      ${c.scalars.map((n, i) => `<tr><td>${esc(n.k)}</td><td><input data-cs="${i}" value="${esc(V(n.v))}"></td></tr>`).join("")}</table></div>
+      <p class="note">Cheile care apar de mai multe ori (de ex. <i>active_party</i>) se editează pe rând. Pentru blocuri folosește Text brut.</p></details>`;
+}
+
+// ---- provinces ----
+function renderProvinces() {
+  const q = S.qP.toLowerCase().trim();
+  const rows = S.allProv.filter((p) => !q || String(p.id) === q || pname(p).toLowerCase().includes(q) || p.owner.toLowerCase() === q);
+  const list = rows.slice(0, 800).map((p) => `<div data-p="${p.id}" class="${p.id === S.province ? "on" : ""}"><span>${esc(pname(p))} <small>${p.id}</small></span><small>${p.owner || "–"}</small></div>`).join("");
+  return `<div class="split"><div class="panel">
+    <input id="qP" placeholder="ID, nume sau tag proprietar" value="${esc(S.qP)}" style="width:100%">
+    <div class="note">${fmt(rows.length)} provincii${rows.length > 800 ? " (primele 800)" : ""}</div>
+    <div class="list">${list}</div></div>
+    <div class="panel">${S.province ? provinceDetail(S.province) : '<p class="muted">Alege o provincie.</p>'}</div></div>${datalists()}`;
+}
+function provinceDetail(id) {
+  const p = S.save.province(id);
+  if (!p) return '<p class="muted">Provincie inexistentă.</p>';
+  const people = p.pops.reduce((a, x) => a + x.size, 0);
+  const types = knownTypes();
+  const tsel = (cur, attr) => `<select ${attr}>${[...new Set([cur, ...types])].map((t) => `<option ${t === cur ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+  const f = (pop, k) => (pop.fields[k] ? V2.unq(pop.fields[k].v) : "");
+  return `<h2>${esc(pname(p))} <span class="muted">#${p.id}</span></h2>
+    <p class="note">${p.pops.length} pop-uri · ${fmt(people)} oameni</p>
+    <div class="grid">
+      <label>Proprietar<input data-pt="owner" list="dlTag" value="${esc(p.owner)}"></label>
+      <label>Controlor<input data-pt="controller" list="dlTag" value="${esc(p.controller)}"></label>
+    </div>
+    <p class="note warn">Schimbarea proprietarului direct în salvare nu mută provincia în state-ul altei țări. Pentru asta folosește în joc comanda <code>changeowner TAG ${p.id}</code>.</p>
+    <h3>Core-uri</h3>
+    <div class="chips">${p.cores.map((c) => `<span class="chip">${esc(cname(c.tag))} ${c.tag}<button data-rmcore="${c.tag}" title="Scoate">×</button></span>`).join("") || '<span class="muted">niciunul</span>'}
+      <input id="coreIn" list="dlTag" placeholder="TAG" style="width:90px"><button class="small" id="coreAdd">Adaugă</button></div>
+    <h3>Pop-uri</h3>
+    <div class="tablewrap"><table><tr><th>ID</th><th>Tip</th><th>Cultură</th><th>Religie</th><th class="num">Mărime</th><th class="num">Bani</th><th class="num">Alfabetizare</th><th class="num">Militanță</th><th class="num">Conștiință</th><th></th></tr>
+    ${p.pops.map((pop, i) => `<tr data-pop="${i}">
+      <td class="muted">${pop.id}</td>
+      <td>${tsel(pop.type, 'data-pf="type"')}</td>
+      <td><input data-pf="culture" list="dlCul" value="${esc(pop.culture)}" title="${esc(ModData.name(pop.culture) || "")}"></td>
+      <td><input data-pf="religion" list="dlRel" value="${esc(pop.religion)}"></td>
+      <td><input data-pf="size" value="${pop.size}"></td>
+      <td><input data-pf="money" value="${esc(f(pop, "money"))}"></td>
+      <td><input data-pf="literacy" value="${esc(f(pop, "literacy"))}"></td>
+      <td><input data-pf="mil" value="${esc(f(pop, "mil"))}"></td>
+      <td><input data-pf="con" value="${esc(f(pop, "con"))}"></td>
+      <td><button class="small" data-clone="${i}" title="Copiază pop-ul">+</button> <button class="small" data-del="${i}" title="Șterge pop-ul">×</button></td></tr>`).join("")}
+    <tr><td></td><td colspan="3" class="muted">Total</td><td class="num">${fmt(people)}</td><td colspan="5"></td></tr></table></div>
+    <h3>Adaugă pop</h3>
+    <div class="row">
+      ${tsel(types.includes("farmers") ? "farmers" : types[0], 'id="npType"')}
+      <input id="npCul" list="dlCul" placeholder="cultură" style="width:150px">
+      <input id="npRel" list="dlRel" placeholder="religie" style="width:130px">
+      <input id="npSize" placeholder="mărime" style="width:90px" value="1000">
+      <button id="npAdd" ${p.pops.length ? "" : "disabled"}>Adaugă</button>
+    </div>
+    <p class="note">Pop-ul nou e o copie a unui pop din provincie (de preferință de același tip), cu ID nou, fără loc de muncă. Joburile se împart din nou la următoarea zi de joc.</p>`;
+}
+
+// ---- bulk ----
+function renderBulk() {
+  const b = S.bulk || (S.bulk = { scope: "owner", target: S.country || "", fc: "", fr: "", ft: "", sc: "", sr: "" });
+  return `<div class="panel"><h2>Conversie în masă</h2>
+    <p class="note">Schimbă cultura și/sau religia tuturor pop-urilor care se potrivesc cu filtrele. Câmpurile goale nu filtrează / nu se schimbă.</p>
+    <div class="grid">
+      <label>Unde<select id="bScope"><option value="owner" ${b.scope === "owner" ? "selected" : ""}>provinciile unei țări</option><option value="ids" ${b.scope === "ids" ? "selected" : ""}>anumite provincii (ID-uri)</option><option value="all" ${b.scope === "all" ? "selected" : ""}>toată lumea</option></select></label>
+      <label>${b.scope === "ids" ? "ID-uri (separate prin spațiu sau virgulă)" : "Tag țară"}<input id="bTarget" ${b.scope === "owner" ? 'list="dlTag"' : ""} value="${esc(b.target)}" ${b.scope === "all" ? "disabled" : ""}></label>
+    </div>
+    <h3>Doar pop-urile cu</h3>
+    <div class="grid">
+      <label>Cultura<input id="bFc" list="dlCul" value="${esc(b.fc)}"></label>
+      <label>Religia<input id="bFr" list="dlRel" value="${esc(b.fr)}"></label>
+      <label>Tipul<input id="bFt" list="dlType" value="${esc(b.ft)}"></label>
+    </div>
+    <h3>Devin</h3>
+    <div class="grid">
+      <label>Cultura nouă<input id="bSc" list="dlCul" value="${esc(b.sc)}"></label>
+      <label>Religia nouă<input id="bSr" list="dlRel" value="${esc(b.sr)}"></label>
+    </div>
+    <div class="row" style="margin-top:12px"><button id="bPreview">Previzualizează</button><button class="primary" id="bApply">Aplică</button><span id="bOut" class="note"></span></div>
+    <datalist id="dlType">${knownTypes().map((t) => `<option value="${esc(t)}">`).join("")}</datalist></div>${datalists()}`;
+}
+function bulkArgs() {
+  const b = S.bulk;
+  const scope = b.scope === "all" ? { all: true } : b.scope === "owner" ? { owner: b.target.trim().toUpperCase() } :
+    { provinces: b.target.split(/[\s,;]+/).filter(Boolean).map(Number) };
+  return [scope, { culture: b.fc.trim(), religion: b.fr.trim(), type: b.ft.trim() }, { culture: b.sc.trim(), religion: b.sr.trim() }];
+}
+function bulkPreview() {
+  const [scope, f, set] = bulkArgs();
+  let pops = 0, people = 0, provs = new Set();
+  const ids = scope.provinces ? new Set(scope.provinces) : null;
+  for (const p of S.allProv) {
+    if (ids && !ids.has(p.id)) continue;
+    if (scope.owner && p.owner !== scope.owner) continue;
+    for (const x of p.pops) {
+      if (f.culture && x.culture !== f.culture) continue;
+      if (f.religion && x.religion !== f.religion) continue;
+      if (f.type && x.type !== f.type) continue;
+      if ((set.culture && set.culture !== x.culture) || (set.religion && set.religion !== x.religion)) { pops++; people += x.size; provs.add(p.id); }
+    }
+  }
+  return { pops, people, provs: provs.size };
+}
+
+// ---- raw ----
+function renderRaw() {
+  const k = S.rawKey;
+  const i = k ? (/^\d+$/.test(k) ? S.save.provinces.get(+k) : S.save.countries.get(k.toUpperCase()) ?? S.save.top.get(k)) : undefined;
+  const txt = i !== undefined ? S.save.segs[i].text : "";
+  return `<div class="panel"><h2>Text brut</h2>
+    <p class="note">Editezi direct textul unui bloc din salvare: ID de provincie (552), tag de țară (GER) sau orice cheie de pe primul nivel (de ex. <i>start_pop_index</i>). Pentru utilizatori avansați.</p>
+    <div class="row"><input id="rawKey" value="${esc(k)}" placeholder="552 / GER / cheie"><button id="rawLoad">Deschide</button>
+      ${i !== undefined ? `<span class="note">${fmt(txt.length)} caractere</span>` : k ? '<span class="bad">Cheie negăsită</span>' : ""}</div>
+    ${i !== undefined ? `<textarea class="raw" id="rawText" spellcheck="false">${esc(V(txt))}</textarea>
+      <div class="row"><button class="primary" id="rawApply" data-seg="${i}">Aplică</button><span id="rawOut" class="note"></span></div>` : ""}</div>`;
+}
+
+
+// ---------- map ----------
+const MODES = [["political", "Politic (proprietar)"], ["controller", "Controlor"], ["culture", "Cultura majoritară"], ["religion", "Religia majoritară"], ["population", "Populație"]];
+function hashColor(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  const hue = (h >>> 0) % 360, sat = 45 + ((h >>> 9) % 25), lig = 45 + ((h >>> 17) % 20); return hsl(hue, sat, lig); }
+function hsl(hh, s, l) { s /= 100; l /= 100; const k = (n) => (n + hh / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = (n) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))))); return [f(0), f(8), f(4)]; }
+const pack = (c) => ((255 << 24) | (c[2] << 16) | (c[1] << 8) | c[0]) >>> 0;
+const cssOf = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+function provInfo() {
+  if (S.infoVer === S.ver && S.info) return S.info;
+  const info = new Map();
+  for (const p of S.allProv) {
+    const cu = new Map(), re = new Map(); let people = 0;
+    for (const x of p.pops) { people += x.size; cu.set(x.culture, (cu.get(x.culture) || 0) + x.size); re.set(x.religion, (re.get(x.religion) || 0) + x.size); }
+    const top = (m) => { let k = "", v = -1; for (const [a, b] of m) if (b > v) { k = a; v = b; } return k; };
+    info.set(p.id, { p, people, cu, re, culture: top(cu), religion: top(re) });
+  }
+  S.info = info; S.infoVer = S.ver; return info;
+}
+function modeColor(mode) {
+  const info = provInfo(), g = MapView.geo;
+  const colors = new Uint32Array(g.maxId + 1), key = new Int32Array(g.maxId + 1);
+  const SEA = pack([0x9f, 0xb7, 0xc9]), WASTE = pack([0xc9, 0xc2, 0xb0]), NONE = pack([0xe4, 0xdf, 0xd2]);
+  const tagIdx = new Map(); const ti = (t) => { if (!tagIdx.has(t)) tagIdx.set(t, tagIdx.size + 1); return tagIdx.get(t); };
+  let maxPeople = 1; for (const v of info.values()) if (v.people > maxPeople) maxPeople = v.people;
+  const used = new Map();
+  for (let id = 0; id <= g.maxId; id++) {
+    if (g.sea.has(id) || id === 0) { colors[id] = SEA; key[id] = -1; continue; }
+    const v = info.get(id);
+    if (!v) { colors[id] = WASTE; key[id] = 0; continue; }
+    const owner = v.p.owner; key[id] = owner ? ti(owner) : 0;
+    let c = null, label = null;
+    if (mode === "political" || mode === "controller") {
+      const t = mode === "political" ? owner : v.p.controller || owner;
+      if (t) { c = D.tagColors.get(t) || hashColor(t); label = t; }
+    } else if (mode === "culture") { if (v.culture) { c = D.cultureColors.get(v.culture) || hashColor(v.culture); label = v.culture; } }
+    else if (mode === "religion") { if (v.religion) { c = D.religionColors.get(v.religion) || hashColor(v.religion); label = v.religion; } }
+    else if (mode === "population") {
+      if (v.people > 0) { const t = Math.log(1 + v.people) / Math.log(1 + maxPeople); c = hsl(28 - 18 * t, 70, 92 - 62 * t); }
+    }
+    colors[id] = c ? pack(c) : (owner ? WASTE : NONE);
+    if (label) { const u = used.get(label) || { c, n: 0 }; u.n += v.people; used.set(label, u); }
+  }
+  return { colors, key: mode === "controller" ? null : key, legend: [...used].sort((a, b) => b[1].n - a[1].n).slice(0, 14), maxPeople };
+}
+function mapTooltip(id) {
+  const v = provInfo().get(id);
+  if (MapView.geo.sea.has(id)) return `<b>${esc(ModData.name("PROV" + id) || "Mare")}</b> <span class="muted">#${id}</span>`;
+  if (!v) return `<b>${esc(ModData.name("PROV" + id) || "#" + id)}</b><br><span class="muted">fără date în salvare</span>`;
+  const p = v.p;
+  return `<b>${esc(pname(p))}</b> <span class="muted">#${id}</span><br>${p.owner ? esc(cname(p.owner)) + " (" + p.owner + ")" : "nelocuită / necolonizată"}${p.controller && p.controller !== p.owner ? `<br>ocupată de ${esc(cname(p.controller))}` : ""}<br>${fmt(v.people)} oameni${v.culture ? " · " + esc(ModData.name(v.culture) || v.culture) : ""}${v.religion ? " · " + esc(ModData.name(v.religion) || v.religion) : ""}`;
+}
+async function renderMap() {
+  const m = $("#main");
+  if (!$("#mapHost")) {
+    if (S.mapView) { S.mapView.destroy(); S.mapView = null; }
+    m.innerHTML = `<div class="mapwrap"><div><div class="row" style="margin-bottom:8px">
+        <select id="mapMode">${MODES.map(([k, l]) => `<option value="${k}" ${k === (S.mapMode || "political") ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <input id="mapFind" placeholder="Caută provincie (nume sau ID)" style="width:220px"><button id="mapGo">Găsește</button>
+        <span class="note">Rotița = zoom · trage = mută · click = detalii</span></div>
+      <div id="mapHost"><div class="maploading">Se încarcă harta…</div></div></div>
+      <div class="panel mapside" id="mapSide"></div></div>`;
+    $("#mapMode").onchange = () => { S.mapMode = $("#mapMode").value; S.mapCache = null; renderMap(); };
+    const find = () => {
+      const q = $("#mapFind").value.trim().toLowerCase(); if (!q) return;
+      const p = S.allProv.find((x) => String(x.id) === q) || S.allProv.find((x) => pname(x).toLowerCase() === q) || S.allProv.find((x) => pname(x).toLowerCase().includes(q));
+      if (!p) return toast("Nu am găsit provincia");
+      S.mapSel = p.id; S.mapView && (S.mapView.select(p.id), S.mapView.centerOn(p.id, true)); mapSide();
+    };
+    $("#mapGo").onclick = find; $("#mapFind").onkeydown = (e) => e.key === "Enter" && find();
+    try { await MapView.load(D.mapSource); }
+    catch (e) { $("#mapHost").innerHTML = `<div class="maploading"><div style="text-align:center;padding:16px">${esc(e.message)}<br><br>Harta vine din folderul jocului sau al mod-ului (map/provinces.bmp): alege-l în tab-ul <b>Date mod</b>.</div></div>`; return; }
+    if (S.tab !== "map" || !$("#mapHost")) return;
+    S.mapView = new MapView.View($("#mapHost"), { state: S.mapState, tooltip: mapTooltip,
+      onClick: (id, e) => { S.mapSel = id; S.mapView.select(id); mapSide(); if (e.detail === 2) { S.province = id; S.tab = "provinces"; S.qP = ""; render(); } } });
+    S.mapCache = null;
+  }
+  const mode = S.mapMode || "political", ck = mode + ":" + (S.ver || 0) + ":" + D.folders.length;
+  if (!S.mapCache || S.mapCache.key !== ck) {
+    await new Promise((r) => setTimeout(r, 0));
+    const mc = modeColor(mode);
+    S.mapView.paint(mc.colors, mc.key);
+    S.mapCache = { key: ck, legend: mc.legend, maxPeople: mc.maxPeople };
+  }
+  if (S.mapSel) S.mapView.select(S.mapSel);
+  mapSide();
+}
+function mapSide() {
+  const el = $("#mapSide"); if (!el) return;
+  const mode = S.mapMode || "political", lg = S.mapCache ? S.mapCache.legend : [];
+  const lname = (k) => mode === "political" || mode === "controller" ? `${esc(cname(k))} <span class="muted">${k}</span>` : esc(ModData.name(k) || k);
+  let html = "";
+  const v = S.mapSel && provInfo().get(S.mapSel);
+  if (v) {
+    const p = v.p;
+    const bars = (mp, nm) => [...mp].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, n]) =>
+      `<div style="margin:4px 0"><div class="row" style="justify-content:space-between"><span>${esc(nm(k))}</span><span class="muted">${v.people ? ((100 * n) / v.people).toFixed(1) : 0}%</span></div><div class="bar" style="width:${v.people ? (100 * n) / v.people : 0}%"></div></div>`).join("");
+    html += `<h2>${esc(pname(p))} <span class="muted">#${p.id}</span></h2>
+      <p class="note">${p.owner ? `${esc(cname(p.owner))} ${p.owner}` : "Fără proprietar"}${p.controller && p.controller !== p.owner ? ` · ocupată de ${esc(cname(p.controller))}` : ""}<br>${p.pops.length} pop-uri · ${fmt(v.people)} oameni<br>Core-uri: ${p.cores.map((c) => c.tag).join(", ") || "–"}</p>
+      <div class="row"><button class="small primary" id="msEdit">Editează provincia</button>${p.owner ? `<button class="small" id="msCountry">Țara ${p.owner}</button>` : ""}</div>
+      <h3>Culturi</h3>${bars(v.cu, (k) => ModData.name(k) || k)}<h3>Religii</h3>${bars(v.re, (k) => ModData.name(k) || k)}`;
+  } else if (S.mapSel) html += `<h2>#${S.mapSel}</h2><p class="muted">${MapView.geo && MapView.geo.sea.has(S.mapSel) ? "Mare" : "Fără date în salvare"}</p>`;
+  else html += `<p class="muted">Click pe o provincie pentru detalii. Dublu-click o deschide în editor.</p>`;
+  if (mode === "population") html += `<h3>Legendă</h3><div class="legend"><div><span class="sw" style="background:${cssOf(hsl(28, 70, 92))}"></span>puțini</div><div><span class="sw" style="background:${cssOf(hsl(10, 70, 30))}"></span>${fmt(S.mapCache ? S.mapCache.maxPeople : 0)} (maxim)</div></div>`;
+  else if (lg.length) html += `<h3>Cele mai mari (după oameni)</h3><div class="legend">${lg.map(([k, u]) => `<div><span class="sw" style="background:${cssOf(u.c)}"></span>${lname(k)} <span class="muted" style="margin-left:auto">${fmt(u.n)}</span></div>`).join("")}</div>`;
+  el.innerHTML = html;
+  const e1 = $("#msEdit"); if (e1) e1.onclick = () => { S.province = S.mapSel; S.tab = "provinces"; S.qP = ""; render(); };
+  const e2 = $("#msCountry"); if (e2) e2.onclick = () => { S.country = provInfo().get(S.mapSel).p.owner; S.tab = "countries"; render(); };
+}
+
+// ---------- events ----------
+function bind() {
+  const m = $("#main");
+  m.querySelectorAll("[data-c]").forEach((el) => (el.onclick = () => { S.country = el.dataset.c; render(); }));
+  m.querySelectorAll("[data-p]").forEach((el) => (el.onclick = () => { S.province = +el.dataset.p; render(); }));
+  m.querySelectorAll("[data-goto]").forEach((el) => (el.onclick = () => { S.province = +el.dataset.goto; S.tab = "provinces"; S.qP = ""; render(); }));
+  const qC = $("#qC"); if (qC) { qC.oninput = () => { S.qC = qC.value; const pos = qC.selectionStart; render(); const n = $("#qC"); n.focus(); n.setSelectionRange(pos, pos); }; }
+  const qP = $("#qP"); if (qP) { qP.oninput = () => { S.qP = qP.value; const pos = qP.selectionStart; render(); const n = $("#qP"); n.focus(); n.setSelectionRange(pos, pos); }; }
+  const dead = $("#dead"); if (dead) dead.onchange = () => { S.showDead = dead.checked; render(); };
+
+  // country fields
+  if (S.tab === "countries" && S.country) {
+    const c = () => S.save.country(S.country);
+    m.querySelectorAll("[data-cf]").forEach((el) => (el.onchange = () => {
+      const k = el.dataset.cf, v = el.value.trim();
+      if (k === "primary_culture" && !checkCulture(v)) return toast("Cultură necunoscută în datele mod-ului: " + v);
+      if (k === "religion" && !checkReligion(v)) return toast("Religie necunoscută: " + v);
+      if (!["primary_culture", "religion", "civilized"].includes(k) && !V2.isNum(v)) return toast("Trebuie un număr");
+      did(S.save.setCountryScalar(c(), k, v), k + " = " + v);
+    }));
+    m.querySelectorAll("[data-cs]").forEach((el) => (el.onchange = () => {
+      const cc = c(); const n = cc.scalars[+el.dataset.cs];
+      did(S.save.setScalar(cc.seg, n, V2.unq(el.value.trim()), cc.tag + "." + n.k), n.k + " schimbat");
+    }));
+    m.querySelectorAll("[data-unacc]").forEach((el) => (el.onclick = () => { const cc = c(); did(S.save.setAccepted(cc, cc.accepted.filter((x) => x !== el.dataset.unacc)), "Scos: " + el.dataset.unacc); }));
+    const add = () => { const v = $("#accIn").value.trim(); if (!v) return; if (!checkCulture(v)) return toast("Cultură necunoscută: " + v);
+      const cc = c(); did(S.save.setAccepted(cc, [...cc.accepted, v]), "Acceptată: " + v); };
+    $("#accAdd") && ($("#accAdd").onclick = add);
+    $("#accIn") && ($("#accIn").onkeydown = (e) => e.key === "Enter" && add());
+  }
+
+  // province fields
+  if (S.tab === "provinces" && S.province) {
+    const p = () => S.save.province(S.province);
+    m.querySelectorAll("[data-pt]").forEach((el) => (el.onchange = () => {
+      const v = el.value.trim().toUpperCase();
+      if (!S.save.countries.has(v)) return toast("Tag necunoscut: " + v);
+      did(S.save.setProvinceTag(p(), el.dataset.pt, v), el.dataset.pt + " = " + v);
+    }));
+    m.querySelectorAll("[data-rmcore]").forEach((el) => (el.onclick = () => did(S.save.removeCore(p(), el.dataset.rmcore), "Core scos")));
+    const addCore = () => { const v = $("#coreIn").value.trim().toUpperCase(); if (!S.save.countries.has(v)) return toast("Tag necunoscut: " + v); did(S.save.addCore(p(), v), "Core adăugat: " + v); };
+    $("#coreAdd") && ($("#coreAdd").onclick = addCore);
+    m.querySelectorAll("[data-pf]").forEach((el) => (el.onchange = () => {
+      const pp = p(); const pop = pp.pops[+el.closest("tr").dataset.pop]; const k = el.dataset.pf; const v = el.value.trim();
+      try {
+        if (k === "culture" && !checkCulture(v)) return toast("Cultură necunoscută: " + v);
+        if (k === "religion" && !checkReligion(v)) return toast("Religie necunoscută: " + v);
+        if (k === "type") { const r = S.save.structural(pp, () => S.save.popOps(pp, pop, { type: v })); return did(true, `Tip schimbat (${r.fixed} joburi reindexate, ${r.dropped} scoase)`); }
+        if (k === "size" && (!/^\d+$/.test(v) || +v < 1)) return toast("Mărimea trebuie să fie un număr întreg ≥ 1");
+        did(S.save.popOps(pp, pop, { [k]: v }), "Pop " + pop.id + ": " + k);
+      } catch (e) { toast(e.message); render(); }
+    }));
+    m.querySelectorAll("[data-del]").forEach((el) => (el.onclick = () => {
+      const pp = p(); const pop = pp.pops[+el.dataset.del];
+      if (!confirm(`Șterg pop-ul ${pop.id} (${pop.type}, ${pop.culture}, ${fmt(pop.size)} oameni)?`)) return;
+      const r = S.save.structural(pp, () => S.save.deletePops(pp, [pop]));
+      did(true, `Pop șters (${r.fixed} joburi reindexate, ${r.dropped} scoase)`);
+    }));
+    m.querySelectorAll("[data-clone]").forEach((el) => (el.onclick = () => { const pp = p(); const pop = pp.pops[+el.dataset.clone]; const id = S.save.clonePop(pp, pop, {}); did(true, "Pop copiat, ID nou " + id); }));
+    const np = $("#npAdd");
+    if (np) np.onclick = () => {
+      const pp = p(); const type = $("#npType").value, cul = $("#npCul").value.trim(), rel = $("#npRel").value.trim(), size = $("#npSize").value.trim();
+      if (!cul || !rel) return toast("Completează cultura și religia");
+      if (!checkCulture(cul)) return toast("Cultură necunoscută: " + cul);
+      if (!checkReligion(rel)) return toast("Religie necunoscută: " + rel);
+      if (!/^\d+$/.test(size) || +size < 1) return toast("Mărime invalidă");
+      const tpl = pp.pops.find((x) => x.type === type) || pp.pops[0];
+      const id = S.save.clonePop(pp, tpl, { type, culture: cul, religion: rel, size: +size });
+      did(true, "Pop adăugat, ID " + id);
+    };
+  }
+
+  // bulk
+  if (S.tab === "bulk") {
+    const b = S.bulk;
+    const sync = () => { b.target = $("#bTarget").value; b.fc = $("#bFc").value; b.fr = $("#bFr").value; b.ft = $("#bFt").value; b.sc = $("#bSc").value; b.sr = $("#bSr").value; };
+    $("#bScope").onchange = () => { sync(); b.scope = $("#bScope").value; b.target = ""; render(); };
+    $("#bPreview").onclick = () => { sync(); const r = bulkPreview(); $("#bOut").textContent = `${fmt(r.pops)} pop-uri, ${fmt(r.people)} oameni, în ${fmt(r.provs)} provincii`; };
+    $("#bApply").onclick = () => {
+      sync();
+      const [scope, f, set] = bulkArgs();
+      if (!set.culture && !set.religion) return toast("Alege cultura sau religia nouă");
+      if (!checkCulture(set.culture)) return toast("Cultură necunoscută: " + set.culture);
+      if (!checkReligion(set.religion)) return toast("Religie necunoscută: " + set.religion);
+      if (scope.owner && !S.save.countries.has(scope.owner)) return toast("Tag necunoscut");
+      const pv = bulkPreview();
+      if (!pv.pops) return toast("Nimic de schimbat");
+      if (!confirm(`Convertesc ${fmt(pv.pops)} pop-uri (${fmt(pv.people)} oameni) în ${fmt(pv.provs)} provincii?`)) return;
+      const r = S.save.bulkConvert(scope, f, set);
+      did(true, `Convertite ${fmt(r.pops)} pop-uri în ${fmt(r.provs)} provincii`);
+    };
+  }
+
+  // raw
+  if (S.tab === "raw") {
+    const go = () => { S.rawKey = $("#rawKey").value.trim(); render(); };
+    $("#rawLoad").onclick = go; $("#rawKey").onkeydown = (e) => e.key === "Enter" && go();
+    const ap = $("#rawApply");
+    if (ap) ap.onclick = () => {
+      const i = +ap.dataset.seg; const nt = V2.toFileChars($("#rawText").value);
+      const orig = S.save.segs[i];
+      let d = 0, inq = false;
+      for (const ch of nt) { if (ch === '"') inq = !inq; else if (!inq) { if (ch === "{") d++; else if (ch === "}") { d--; if (d < 0) break; } } }
+      if (d !== 0) return ($("#rawOut").textContent = "Acolade neechilibrate (" + d + "), nu am aplicat.");
+      const segs = V2.split(nt).filter((s) => s.key !== null);
+      if (segs.length !== 1 || segs[0].key !== orig.key) return ($("#rawOut").textContent = "Textul trebuie să rămână un singur bloc cu cheia " + orig.key + ".");
+      if (!/\s$/.test(nt.slice(0, 1)) && orig.text[0] !== nt[0] && /^\s/.test(orig.text)) { /* keep leading newline */ }
+      const lead = orig.text.match(/^\s*/)[0];
+      const fixed = /^\s/.test(nt) ? nt : lead + nt;
+      did(S.save.setText(i, fixed, "text brut " + orig.key), "Aplicat");
+    };
+  }
+}
+
+// ---------- wiring ----------
+$("#bOpen").onclick = openSave;
+$("#bMod").onclick = addFolder;
+$("#bUndo").onclick = undo;
+$("#bSaveAs").onclick = saveAs;
+$("#bSave").onclick = saveOver;
+document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => { S.tab = b.dataset.tab; render(); }));
+document.addEventListener("click", (e) => {
+  const r = e.target.closest("[data-rmf]");
+  if (r) { D.folders.splice(+r.dataset.rmf, 1); afterFolders(); }
+  if (e.target.id === "bMod2") addFolder();
+  if (e.target.id === "bGrant2") grantFolders();
+  if (e.target.id === "bClassic") $("#dirIn").click();
+  if (e.target.id === "bUseMods") applyMods([...document.querySelectorAll("[data-mod]:checked")].map((x) => x.dataset.mod));
+  if (e.target.id === "bVanilla") applyMods([]);
+  if (e.target.id === "bPack") { D.folders.unshift(ModData.fromPack(BUILTIN_PACK)); afterFolders(); }
+});
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "z" && S.save && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); undo(); } });
+restoreFolders().finally(() => { status(); render(); });
+</script>
+</body>
+</html>
