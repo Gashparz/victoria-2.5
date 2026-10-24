@@ -54,6 +54,8 @@ When the game adds a member to a war side, the plugin adds every other living me
 - If both war leaders are in the same bloc, nobody else is pulled in.
 - Crisis and rebel wars, and loading a save, are left alone.
 
+The **Blocuri** button in the COMENZI window opens a panel that lists every bloc and its members. The panel updates as you change blocs.
+
 Set `blocs=0` in the ini to turn the feature off.
 
 ### Top bar tab

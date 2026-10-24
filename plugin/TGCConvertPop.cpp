@@ -1126,6 +1126,8 @@ uint32_t __stdcall war_add_def_hook(uintptr_t war, uint32_t join, uint32_t b, ui
     return r;
 }
 
+void bloc_panel_refresh();  // the BLOCURI window, if open
+
 bool valid_bloc_name(const char* s) {
     size_t n = strlen(s);
     if (n < 1 || n > 24) return false;
@@ -1164,6 +1166,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_add(ConsoleResult* out, ArgVector* ar
         t.add("%s joins %s.\n", tag, name);
     }
     logf("bloc_add %s: %d countries", name, done);
+    bloc_panel_refresh();
     t.add("Bloc %s: %d added. In a war every living member joins the side of the member that is in it.", name, done);
     return finish(out, done > 0, t);
 }
@@ -1186,6 +1189,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_remove(ConsoleResult* out, ArgVector*
         ++done;
         t.add("%s left %s.\n", tag, cur);
     }
+    bloc_panel_refresh();
     return finish(out, done > 0, t);
 }
 
@@ -1203,6 +1207,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_disband(ConsoleResult* out, ArgVector
         uintptr_t e = c ? flag_find(c, flag) : 0;
         if (e && rd<uint8_t>(e + 0x1C)) { *reinterpret_cast<uint8_t*>(e + 0x1C) = 0; ++n; }
     });
+    bloc_panel_refresh();
     return reply(out, n > 0, n ? "Bloc %s disbanded (%d members)." : "No bloc called %s.", name, n);
 }
 
@@ -1394,6 +1399,8 @@ void* g_cmdwin = nullptr;   // our "v2cmd_window"
 void* g_layer = nullptr;
 alignas(8) uint8_t g_tab_glue[kGlueSize];
 alignas(8) uint8_t g_close_glue[kGlueSize];
+alignas(8) uint8_t g_blocs_btn_glue[kGlueSize], g_bloc_close_glue[kGlueSize], g_bloc_back_glue[kGlueSize];
+void* g_blocwin = nullptr;  // our "v2bloc_window"
 
 typedef int(__fastcall* TopbarBuildFn)(void*, void*);
 typedef void*(__fastcall* TopbarDtorFn)(void*, void*, int);
@@ -1404,6 +1411,9 @@ TopbarShowFn g_show_orig = nullptr, g_hide_orig = nullptr;
 
 extern "C" void tcp_tab_click_thunk();
 extern "C" void tcp_close_click_thunk();
+extern "C" void tcp_blocs_click_thunk();
+extern "C" void tcp_bloc_close_thunk();
+extern "C" void tcp_bloc_back_thunk();
 
 void win_show(void* w, bool on) {
     if (!w) return;
@@ -1455,16 +1465,140 @@ bool subscribe(void* window, const char* button, uint8_t* glue, void (*thunk)())
     return true;
 }
 
+// ---- text boxes: window vt 0x3C finds one by name; text = std::string at +0xDC, renderer at +0xA0
+// (SetText 0x00A5ECC0: ESI = renderer, (const std::string*, bool)) - the game does both everywhere.
+constexpr uintptr_t VA_STR_ASSIGN_SUB = 0x00408ED0, VA_TEXT_SET = 0x00A5ECC0;
+}  // namespace
+extern "C" void tcp_settext_thunk(uintptr_t fn, uintptr_t renderer, const void* str);
+asm(R"(
+    .text
+    .globl _tcp_settext_thunk
+_tcp_settext_thunk:
+    pushl %ebp
+    movl  %esp, %ebp
+    pushl %ebx
+    pushl %esi
+    pushl %edi
+    movl  12(%ebp), %esi
+    pushl $0
+    pushl 16(%ebp)
+    call  *8(%ebp)
+    popl  %edi
+    popl  %esi
+    popl  %ebx
+    popl  %ebp
+    ret
+)");
+namespace {
+void tb_set(void* win, const char* name, const char* text) {
+    if (!win) return;
+    GameString n;
+    gs_view(&n, name, strlen(name));
+    uint8_t* tb = (uint8_t*)vcall1(win, 0x3C, &n);
+    if (!tb) return;
+    GameString v;
+    gs_view(&v, text, strlen(text));
+    typedef void(__fastcall * AssignFn)(void*, void*, const GameString*, uint32_t, uint32_t);
+    reinterpret_cast<AssignFn>(R(VA_STR_ASSIGN_SUB))(tb + 0xDC, nullptr, &v, 0, 0xFFFFFFFFu);
+    uintptr_t renderer = rd<uintptr_t>((uintptr_t)tb + 0xA0);
+    if (renderer) tcp_settext_thunk(R(VA_TEXT_SET), renderer, &v);
+}
+
+constexpr int kBlocLines = 22;
+char g_bloc_text[kBlocLines][160];
+
+void bloc_panel_fill() {
+    for (auto& l : g_bloc_text) l[0] = 0;
+    struct Entry { char bloc[32]; char tag[4]; bool alive; };
+    static Entry list[1024];
+    int n = 0;
+    for_each_tag([&](uint32_t tag, uint32_t idx) {
+        uintptr_t c = country_at((int)idx);
+        char b[64];
+        if (n < 1024 && country_bloc(c, b, sizeof(b))) {
+            snprintf(list[n].bloc, sizeof(list[n].bloc), "%s", b);
+            tag_text(tag, list[n].tag);
+            list[n].alive = country_alive(c);
+            ++n;
+        }
+    });
+    int line = 0;
+    if (!n) {
+        snprintf(g_bloc_text[0], 160, "Nu exista blocuri. Creeaza unul din consola:");
+        snprintf(g_bloc_text[1], 160, "bloc_add <nume> <TAG> [alte tag-uri]      ex: bloc_add antanta FRA ENG RUS");
+        return;
+    }
+    static bool done[1024];
+    memset(done, 0, sizeof(done));
+    for (int i = 0; i < n && line < kBlocLines; ++i) {
+        if (done[i]) continue;
+        int cnt = 0, alive = 0;
+        for (int k = i; k < n; ++k)
+            if (_stricmp(list[k].bloc, list[i].bloc) == 0) { ++cnt; alive += list[k].alive; }
+        char title[64];
+        snprintf(title, sizeof(title), "%s", list[i].bloc);
+        for (char* p = title; *p; ++p) *p = *p == '_' ? ' ' : (char)toupper((unsigned char)*p);
+        if (line > 0 && line < kBlocLines) ++line;  // blank line between blocs
+        if (line >= kBlocLines) break;
+        snprintf(g_bloc_text[line++], 160, "%s  -  %d membri (%d in viata)", title, cnt, alive);
+        char buf[160] = "      ";
+        for (int k = i; k < n; ++k) {
+            if (done[k] || _stricmp(list[k].bloc, list[i].bloc) != 0) continue;
+            done[k] = true;
+            char item[16];
+            snprintf(item, sizeof(item), "%s%s  ", list[k].tag, list[k].alive ? "" : " (mort)");
+            if (strlen(buf) + strlen(item) > 110) {
+                if (line < kBlocLines) snprintf(g_bloc_text[line++], 160, "%s", buf);
+                snprintf(buf, sizeof(buf), "      ");
+            }
+            strncat(buf, item, sizeof(buf) - strlen(buf) - 1);
+        }
+        if (strlen(buf) > 6 && line < kBlocLines) snprintf(g_bloc_text[line++], 160, "%s", buf);
+    }
+    if (line >= kBlocLines) snprintf(g_bloc_text[kBlocLines - 1], 160, "... (lista completa: bloc_list in consola)");
+}
+void bloc_panel_refresh() {
+    if (!g_blocwin) return;
+    bloc_panel_fill();
+    for (int i = 0; i < kBlocLines; ++i) {
+        char name[24];
+        snprintf(name, sizeof(name), "v2bloc_l%d", i);
+        tb_set(g_blocwin, name, g_bloc_text[i][0] ? g_bloc_text[i] : " ");
+    }
+}
+
+extern "C" void __cdecl tcp_on_blocs_click() {
+    if (!g_blocwin) {
+        g_blocwin = gui_create("v2bloc_window");
+        if (!g_blocwin) return;
+        subscribe(g_blocwin, "close_button", g_bloc_close_glue, &tcp_bloc_close_thunk);
+        subscribe(g_blocwin, "v2bloc_back", g_bloc_back_glue, &tcp_bloc_back_thunk);
+        logf("tab: bloc window created");
+    }
+    bloc_panel_refresh();
+    win_show(g_blocwin, true);
+    if (win_visible(g_cmdwin)) win_show(g_cmdwin, false);
+}
+extern "C" void __cdecl tcp_on_bloc_close() { win_show(g_blocwin, false); }
+extern "C" void __cdecl tcp_on_bloc_back() {
+    win_show(g_blocwin, false);
+    if (g_cmdwin) win_show(g_cmdwin, true);
+}
+
 extern "C" void __cdecl tcp_on_tab_click() {
     if (!g_cmdwin) {
         g_cmdwin = gui_create("v2cmd_window");
         if (!g_cmdwin) return;
         subscribe(g_cmdwin, "close_button", g_close_glue, &tcp_close_click_thunk);
+        subscribe(g_cmdwin, "v2cmd_blocs", g_blocs_btn_glue, &tcp_blocs_click_thunk);
         logf("tab: command window created");
         win_show(g_cmdwin, true);
+        if (win_visible(g_blocwin)) win_show(g_blocwin, false);
         return;
     }
-    win_show(g_cmdwin, !win_visible(g_cmdwin));
+    bool show = !win_visible(g_cmdwin);
+    win_show(g_cmdwin, show);
+    if (show && win_visible(g_blocwin)) win_show(g_blocwin, false);
 }
 extern "C" void __cdecl tcp_on_close_click() { win_show(g_cmdwin, false); }
 
@@ -1488,9 +1622,37 @@ _tcp_close_click_thunk:
     popfl
     popal
     ret
+    .globl _tcp_blocs_click_thunk
+_tcp_blocs_click_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_blocs_click
+    popfl
+    popal
+    ret
+    .globl _tcp_bloc_close_thunk
+_tcp_bloc_close_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_bloc_close
+    popfl
+    popal
+    ret
+    .globl _tcp_bloc_back_thunk
+_tcp_bloc_back_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_bloc_back
+    popfl
+    popal
+    ret
 )");
 
 void drop_windows() {  // before the topbar rebuilds or dies: our windows go with it
+    win_destroy(g_blocwin);
     win_destroy(g_cmdwin);
     win_destroy(g_tab);
 }
@@ -1527,6 +1689,7 @@ void __fastcall topbar_hide_hook(void* self, void* edx) {
     if (self == g_topbar) {
         win_show(g_tab, false);
         if (win_visible(g_cmdwin)) win_show(g_cmdwin, false);
+        if (win_visible(g_blocwin)) win_show(g_blocwin, false);
     }
 }
 
@@ -1596,7 +1759,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-24 (blocs)");
+    logf("TGC Convert Pop build 2026-10-24b (blocs + bloc panel)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

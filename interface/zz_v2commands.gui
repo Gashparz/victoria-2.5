@@ -77,6 +77,14 @@ guiTypes = {
 			Orientation = "UPPER_LEFT"
 			shortcut = "ESCAPE"
 		}
+		guiButtonType = {
+			name = "v2cmd_blocs"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 22 y = 12 }
+			buttonText = "Blocuri"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
 		instantTextBoxType = {
 			name = "v2cmd_header"
 			position = { x = 0 y = 16 }
@@ -283,6 +291,293 @@ guiTypes = {
 			maxWidth = 660
 			maxHeight = 18
 			text = "Jurnal: the_grand_loader.log langa v2game.exe. Totalurile de populatie se actualizeaza a doua zi."
+			format = left
+			fixedsize = yes
+		}
+	}
+
+	# Bloc panel (filled by TGCConvertPop.dll)
+	windowType = {
+		name = "v2bloc_window"
+		backGround = "Background"
+		position = { x = -360 y = -261 }
+		size = { x = 720 y = 522 }
+		moveable = 1
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {
+			name = "Background"
+			quadTextureSprite = "GFX_v2bloc_bg"
+		}
+		guiButtonType = {
+			name = "close_button"
+			quadTextureSprite = "GFX_main_close_button"
+			position = { x = 676 y = 12 }
+			Orientation = "UPPER_LEFT"
+			shortcut = "ESCAPE"
+		}
+		guiButtonType = {
+			name = "v2bloc_back"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 22 y = 12 }
+			buttonText = "Comenzi"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		instantTextBoxType = {
+			name = "v2bloc_header"
+			position = { x = 0 y = 16 }
+			font = "vic_22"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 720
+			maxHeight = 30
+			text = "Blocuri"
+			format = centre
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l0"
+			position = { x = 30 y = 58 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l1"
+			position = { x = 30 y = 78 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l2"
+			position = { x = 30 y = 98 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l3"
+			position = { x = 30 y = 118 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l4"
+			position = { x = 30 y = 138 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l5"
+			position = { x = 30 y = 158 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l6"
+			position = { x = 30 y = 178 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l7"
+			position = { x = 30 y = 198 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l8"
+			position = { x = 30 y = 218 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l9"
+			position = { x = 30 y = 238 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l10"
+			position = { x = 30 y = 258 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l11"
+			position = { x = 30 y = 278 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l12"
+			position = { x = 30 y = 298 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l13"
+			position = { x = 30 y = 318 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l14"
+			position = { x = 30 y = 338 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l15"
+			position = { x = 30 y = 358 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l16"
+			position = { x = 30 y = 378 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l17"
+			position = { x = 30 y = 398 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l18"
+			position = { x = 30 y = 418 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l19"
+			position = { x = 30 y = 438 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l20"
+			position = { x = 30 y = 458 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2bloc_l21"
+			position = { x = 30 y = 478 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
 			format = left
 			fixedsize = yes
 		}

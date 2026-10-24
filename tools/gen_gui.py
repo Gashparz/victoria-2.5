@@ -130,6 +130,14 @@ add(f'''
 			Orientation = "UPPER_LEFT"
 			shortcut = "ESCAPE"
 		}}
+		guiButtonType = {{
+			name = "v2cmd_blocs"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = {{ x = 22 y = 12 }}
+			buttonText = "Blocuri"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}}
 		instantTextBoxType = {{
 			name = "v2cmd_header"
 			position = {{ x = 0 y = 16 }}
@@ -143,6 +151,68 @@ add(f'''
 		}}
 ''')
 o += body
+add('\t}\n')
+# ---- bloc panel
+BL = 22
+BH = 58 + BL * 20 + 24
+add(f'''
+	# Bloc panel (filled by TGCConvertPop.dll)
+	windowType = {{
+		name = "v2bloc_window"
+		backGround = "Background"
+		position = {{ x = -{W//2} y = -{BH//2} }}
+		size = {{ x = {W} y = {BH} }}
+		moveable = 1
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {{
+			name = "Background"
+			quadTextureSprite = "GFX_v2bloc_bg"
+		}}
+		guiButtonType = {{
+			name = "close_button"
+			quadTextureSprite = "GFX_main_close_button"
+			position = {{ x = {W-44} y = 12 }}
+			Orientation = "UPPER_LEFT"
+			shortcut = "ESCAPE"
+		}}
+		guiButtonType = {{
+			name = "v2bloc_back"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = {{ x = 22 y = 12 }}
+			buttonText = "Comenzi"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}}
+		instantTextBoxType = {{
+			name = "v2bloc_header"
+			position = {{ x = 0 y = 16 }}
+			font = "vic_22"
+			borderSize = {{ x = 0 y = 0 }}
+			maxWidth = {W}
+			maxHeight = 30
+			text = "Blocuri"
+			format = centre
+			fixedsize = yes
+		}}
+''')
+for i in range(BL):
+    add(f'''		instantTextBoxType = {{
+			name = "v2bloc_l{i}"
+			position = {{ x = 30 y = {58 + i * 20} }}
+			font = "Arial12"
+			borderSize = {{ x = 0 y = 0 }}
+			maxWidth = {W-60}
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}}
+''')
 add('\t}\n}\n')
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))
 open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r\n').write(f'''spriteTypes = {{
@@ -150,6 +220,12 @@ open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r
 	corneredTileSpriteType = {{
 		name = "GFX_v2cmd_bg"
 		size = {{ x = {W} y = {H} }}
+		textureFile = "gfx\\\\interface\\\\tiles_dialog_type2.tga"
+		borderSize = {{ x = 94 y = 94 }}
+	}}
+	corneredTileSpriteType = {{
+		name = "GFX_v2bloc_bg"
+		size = {{ x = {W} y = {BH} }}
 		textureFile = "gfx\\\\interface\\\\tiles_dialog_type2.tga"
 		borderSize = {{ x = 94 y = 94 }}
 	}}
