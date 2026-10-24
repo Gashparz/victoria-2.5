@@ -43,6 +43,8 @@ Console commands (single player)
         living member joins the same side. Stored as the country flag bloc_<name>, so it is saved
         in the save game. Normal alliances are untouched. Crisis and rebel wars are not affected.
         Panel: top bar tab COMENZI -> "Blocuri" button shows every bloc and its members.
+  bloc_map [on|off]   the political map mode shows each bloc in its own colour (others grey);
+        also the "Harta on/off" button in the bloc panel.
 
 Pop merging: the game merges a moving pop into any pop of the same type and religion,
 ignoring culture (vanilla bug). migrate_pop uses a fixed check (same type, culture AND religion).

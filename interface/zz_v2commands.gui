@@ -300,8 +300,8 @@ guiTypes = {
 	windowType = {
 		name = "v2bloc_window"
 		backGround = "Background"
-		position = { x = -360 y = -261 }
-		size = { x = 720 y = 522 }
+		position = { x = -360 y = -274 }
+		size = { x = 720 y = 548 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -319,6 +319,25 @@ guiTypes = {
 			position = { x = 676 y = 12 }
 			Orientation = "UPPER_LEFT"
 			shortcut = "ESCAPE"
+		}
+		guiButtonType = {
+			name = "v2bloc_mapbtn"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 520 y = 12 }
+			buttonText = "Harta on/off"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		instantTextBoxType = {
+			name = "v2bloc_mapstate"
+			position = { x = 30 y = 54 }
+			font = "vic_18"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 22
+			text = " "
+			format = left
+			fixedsize = yes
 		}
 		guiButtonType = {
 			name = "v2bloc_back"
@@ -341,7 +360,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l0"
-			position = { x = 30 y = 58 }
+			position = { x = 30 y = 84 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -352,7 +371,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l1"
-			position = { x = 30 y = 78 }
+			position = { x = 30 y = 104 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -363,7 +382,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l2"
-			position = { x = 30 y = 98 }
+			position = { x = 30 y = 124 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -374,7 +393,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l3"
-			position = { x = 30 y = 118 }
+			position = { x = 30 y = 144 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -385,7 +404,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l4"
-			position = { x = 30 y = 138 }
+			position = { x = 30 y = 164 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -396,7 +415,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l5"
-			position = { x = 30 y = 158 }
+			position = { x = 30 y = 184 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -407,7 +426,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l6"
-			position = { x = 30 y = 178 }
+			position = { x = 30 y = 204 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -418,7 +437,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l7"
-			position = { x = 30 y = 198 }
+			position = { x = 30 y = 224 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -429,7 +448,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l8"
-			position = { x = 30 y = 218 }
+			position = { x = 30 y = 244 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -440,7 +459,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l9"
-			position = { x = 30 y = 238 }
+			position = { x = 30 y = 264 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -451,7 +470,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l10"
-			position = { x = 30 y = 258 }
+			position = { x = 30 y = 284 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -462,7 +481,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l11"
-			position = { x = 30 y = 278 }
+			position = { x = 30 y = 304 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -473,7 +492,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l12"
-			position = { x = 30 y = 298 }
+			position = { x = 30 y = 324 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -484,7 +503,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l13"
-			position = { x = 30 y = 318 }
+			position = { x = 30 y = 344 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -495,7 +514,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l14"
-			position = { x = 30 y = 338 }
+			position = { x = 30 y = 364 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -506,7 +525,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l15"
-			position = { x = 30 y = 358 }
+			position = { x = 30 y = 384 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -517,7 +536,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l16"
-			position = { x = 30 y = 378 }
+			position = { x = 30 y = 404 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -528,7 +547,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l17"
-			position = { x = 30 y = 398 }
+			position = { x = 30 y = 424 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -539,7 +558,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l18"
-			position = { x = 30 y = 418 }
+			position = { x = 30 y = 444 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -550,7 +569,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l19"
-			position = { x = 30 y = 438 }
+			position = { x = 30 y = 464 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -561,7 +580,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l20"
-			position = { x = 30 y = 458 }
+			position = { x = 30 y = 484 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -572,7 +591,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2bloc_l21"
-			position = { x = 30 y = 478 }
+			position = { x = 30 y = 504 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660

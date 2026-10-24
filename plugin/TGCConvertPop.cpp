@@ -1127,6 +1127,7 @@ uint32_t __stdcall war_add_def_hook(uintptr_t war, uint32_t join, uint32_t b, ui
 }
 
 void bloc_panel_refresh();  // the BLOCURI window, if open
+void bloc_map_redraw();     // the bloc map, if on
 
 bool valid_bloc_name(const char* s) {
     size_t n = strlen(s);
@@ -1167,6 +1168,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_add(ConsoleResult* out, ArgVector* ar
     }
     logf("bloc_add %s: %d countries", name, done);
     bloc_panel_refresh();
+    bloc_map_redraw();
     t.add("Bloc %s: %d added. In a war every living member joins the side of the member that is in it.", name, done);
     return finish(out, done > 0, t);
 }
@@ -1190,6 +1192,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_remove(ConsoleResult* out, ArgVector*
         t.add("%s left %s.\n", tag, cur);
     }
     bloc_panel_refresh();
+    bloc_map_redraw();
     return finish(out, done > 0, t);
 }
 
@@ -1208,6 +1211,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_disband(ConsoleResult* out, ArgVector
         if (e && rd<uint8_t>(e + 0x1C)) { *reinterpret_cast<uint8_t*>(e + 0x1C) = 0; ++n; }
     });
     bloc_panel_refresh();
+    bloc_map_redraw();
     return reply(out, n > 0, n ? "Bloc %s disbanded (%d members)." : "No bloc called %s.", name, n);
 }
 
@@ -1244,6 +1248,118 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_list(ConsoleResult* out, ArgVector* a
         t.add("\n");
     }
     return finish(out, true, t);
+}
+
+
+// ================= bloc map (political map mode recoloured by bloc) =================
+// 0x007FCA30 builds the political palette (stdcall, colour map = map+0x20BC): vector of per-province
+// entries at +0x1C (index 1..n-1), entry +0 owner colour, +4 controller colour (ARGB), +0xC province.
+// Called from 0x0066C4C3 (political map mode, ESI = map view) and 0x00422A32. Both calls are redirected
+// here; when the bloc map is on, the original runs and then the colours are replaced.
+// Map view: +0xDB4 current mode (1 = political), [+0x24] = 22 "dirty" flags, one per mode.
+constexpr uintptr_t VA_POL_PALETTE = 0x007FCA30, VA_POL_CALL_MODE = 0x0066C4C3, VA_POL_CALL_OTHER = 0x00422A32;
+bool g_bloc_map = false;
+bool g_bloc_map_ok = false;
+uintptr_t g_pol_target = 0;
+}  // namespace
+extern "C" { uintptr_t tcp_mapview = 0; void* tcp_pol_fn = nullptr; }
+extern "C" void tcp_pol_mode_thunk();
+asm(R"(
+    .text
+    .globl _tcp_pol_mode_thunk
+_tcp_pol_mode_thunk:
+    movl  %esi, _tcp_mapview
+    jmp   *_tcp_pol_fn
+)");
+namespace {
+const uint32_t kBlocPalette[] = {0xE53935, 0x1E88E5, 0x43A047, 0xFB8C00, 0x8E24AA, 0xFDD835,
+                                 0x00ACC1, 0xD81B60, 0x6D4C41, 0xC0CA33, 0x00897B, 0x3949AB};
+const char* const kBlocColorNames[] = {"rosu", "albastru", "verde", "portocaliu", "mov", "galben",
+                                       "turcoaz", "roz", "maro", "lime", "verde-albastrui", "indigo"};
+constexpr int kPal = sizeof(kBlocPalette) / sizeof(kBlocPalette[0]);
+
+// Sorted distinct bloc names -> palette index (stable for the same set of blocs).
+int bloc_names(char names[][32], int max) {
+    int n = 0;
+    for_each_tag([&](uint32_t, uint32_t idx) {
+        char b[64];
+        if (!country_bloc(country_at((int)idx), b, sizeof(b))) return;
+        for (int k = 0; k < n; ++k)
+            if (_stricmp(names[k], b) == 0) return;
+        if (n < max) snprintf(names[n++], 32, "%s", b);
+    });
+    for (int i = 1; i < n; ++i)
+        for (int k = i; k > 0 && _stricmp(names[k - 1], names[k]) > 0; --k) {
+            char t[32];
+            memcpy(t, names[k], 32); memcpy(names[k], names[k - 1], 32); memcpy(names[k - 1], t, 32);
+        }
+    return n;
+}
+int bloc_color_index(const char* bloc) {
+    char names[64][32];
+    int n = bloc_names(names, 64);
+    for (int k = 0; k < n; ++k)
+        if (_stricmp(names[k], bloc) == 0) return k % kPal;
+    return 0;
+}
+
+uint32_t grey_of(uint32_t argb) {
+    uint32_t r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
+    uint32_t l = (r * 30 + g * 59 + b * 11) / 100;
+    uint32_t v = 60 + l * 35 / 100;
+    return (argb & 0xFF000000u) | (v << 16) | (v << 8) | v;
+}
+
+void __stdcall pol_palette_hook(uintptr_t cmap) {
+    reinterpret_cast<void(__stdcall*)(uintptr_t)>(g_pol_target)(cmap);
+    if (!g_bloc_map) return;
+    static uint32_t color_of[4096];
+    memset(color_of, 0, sizeof(color_of));
+    char names[64][32];
+    int nb = bloc_names(names, 64);
+    for_each_tag([&](uint32_t, uint32_t idx) {
+        char b[64];
+        if (idx >= 4096 || !country_bloc(country_at((int)idx), b, sizeof(b))) return;
+        for (int k = 0; k < nb; ++k)
+            if (_stricmp(names[k], b) == 0) { color_of[idx] = kBlocPalette[k % kPal] | 0x01000000u; break; }
+    });
+    uintptr_t* b = rd<uintptr_t*>(cmap + 0x1C);
+    uintptr_t* e = rd<uintptr_t*>(cmap + 0x20);
+    for (uintptr_t* it = b ? b + 1 : nullptr; it && it < e; ++it) {
+        uint32_t* entry = reinterpret_cast<uint32_t*>(*it);
+        if (!entry) continue;
+        uintptr_t prov = entry[3];
+        if (!prov) continue;
+        uint32_t owner = rd<uint32_t>(prov + 0x12C), ctrl = rd<uint32_t>(prov + 0x134);
+        if (!owner || owner >= 4096) continue;  // sea, wasteland
+        uint32_t a = entry[0] & 0xFF000000u;
+        uint32_t c1 = color_of[owner] ? (a | (color_of[owner] & 0xFFFFFF)) : grey_of(entry[0]);
+        uint32_t c2 = c1;
+        if (ctrl && ctrl != owner && ctrl < 4096)
+            c2 = color_of[ctrl] ? ((entry[1] & 0xFF000000u) | (color_of[ctrl] & 0xFFFFFF)) : grey_of(entry[1]);
+        entry[0] = c1;
+        entry[1] = c2;
+    }
+}
+
+void bloc_map_redraw() {
+    if (!tcp_mapview) return;
+    uint32_t* dirty = rd<uint32_t*>(tcp_mapview + 0x24);
+    if (dirty) dirty[1] = 1;  // the game rebuilds the political palette on its next map update
+}
+
+extern "C" ConsoleResult* __cdecl cmd_bloc_map(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (!g_bloc_map_ok) return reply(out, false, "bloc_map: not available (the political map code differs, see the log).");
+    const char* a = arg_count(args) >= 1 ? arg_text(args, 0) : nullptr;
+    if (a && _stricmp(a, "on") == 0) g_bloc_map = true;
+    else if (a && _stricmp(a, "off") == 0) g_bloc_map = false;
+    else g_bloc_map = !g_bloc_map;
+    bloc_map_redraw();
+    bloc_panel_refresh();
+    return reply(out, true, g_bloc_map ? "Bloc map ON: the political map mode now shows the blocs (others in grey)."
+                                       : "Bloc map OFF: the political map is normal again.");
 }
 
 // ================= console table extension =================
@@ -1285,6 +1401,8 @@ const NewCommand kCommands[] = {
      (void*)&cmd_bloc_add, 2, {"bloc name", "tags"}},
     {"bloc_remove", "blocremove", "Takes countries out of their bloc.", (void*)&cmd_bloc_remove, 1, {"tags"}},
     {"bloc_list", "bloclist", "Lists the blocs and their members.", (void*)&cmd_bloc_list, 1, {"<bloc name>"}},
+    {"bloc_map", "blocmap", "Toggles the bloc map: the political map mode shows each bloc in its own colour.",
+     (void*)&cmd_bloc_map, 1, {"<on|off>"}},
     {"bloc_disband", "blocdisband", "Removes every member of a bloc.", (void*)&cmd_bloc_disband, 1, {"bloc name"}},
     {"remove_core", "removecore", "Removes a country's core from one or more provinces.", (void*)&cmd_remove_core, 2, {"country tag", "province ids"}},
 };
@@ -1399,7 +1517,7 @@ void* g_cmdwin = nullptr;   // our "v2cmd_window"
 void* g_layer = nullptr;
 alignas(8) uint8_t g_tab_glue[kGlueSize];
 alignas(8) uint8_t g_close_glue[kGlueSize];
-alignas(8) uint8_t g_blocs_btn_glue[kGlueSize], g_bloc_close_glue[kGlueSize], g_bloc_back_glue[kGlueSize];
+alignas(8) uint8_t g_blocs_btn_glue[kGlueSize], g_bloc_close_glue[kGlueSize], g_bloc_back_glue[kGlueSize], g_bloc_map_glue[kGlueSize];
 void* g_blocwin = nullptr;  // our "v2bloc_window"
 
 typedef int(__fastcall* TopbarBuildFn)(void*, void*);
@@ -1414,6 +1532,7 @@ extern "C" void tcp_close_click_thunk();
 extern "C" void tcp_blocs_click_thunk();
 extern "C" void tcp_bloc_close_thunk();
 extern "C" void tcp_bloc_back_thunk();
+extern "C" void tcp_bloc_mapbtn_thunk();
 
 void win_show(void* w, bool on) {
     if (!w) return;
@@ -1540,7 +1659,8 @@ void bloc_panel_fill() {
         for (char* p = title; *p; ++p) *p = *p == '_' ? ' ' : (char)toupper((unsigned char)*p);
         if (line > 0 && line < kBlocLines) ++line;  // blank line between blocs
         if (line >= kBlocLines) break;
-        snprintf(g_bloc_text[line++], 160, "%s  -  %d membri (%d in viata)", title, cnt, alive);
+        snprintf(g_bloc_text[line++], 160, "%s  -  %d membri (%d in viata)  -  pe harta: %s", title, cnt, alive,
+                 kBlocColorNames[bloc_color_index(list[i].bloc) % kPal]);
         char buf[160] = "      ";
         for (int k = i; k < n; ++k) {
             if (done[k] || _stricmp(list[k].bloc, list[i].bloc) != 0) continue;
@@ -1560,6 +1680,7 @@ void bloc_panel_fill() {
 void bloc_panel_refresh() {
     if (!g_blocwin) return;
     bloc_panel_fill();
+    tb_set(g_blocwin, "v2bloc_mapstate", g_bloc_map ? "Harta blocurilor: PORNITA (modul politic)" : "Harta blocurilor: oprita");
     for (int i = 0; i < kBlocLines; ++i) {
         char name[24];
         snprintf(name, sizeof(name), "v2bloc_l%d", i);
@@ -1573,11 +1694,17 @@ extern "C" void __cdecl tcp_on_blocs_click() {
         if (!g_blocwin) return;
         subscribe(g_blocwin, "close_button", g_bloc_close_glue, &tcp_bloc_close_thunk);
         subscribe(g_blocwin, "v2bloc_back", g_bloc_back_glue, &tcp_bloc_back_thunk);
+        if (g_bloc_map_ok) subscribe(g_blocwin, "v2bloc_mapbtn", g_bloc_map_glue, &tcp_bloc_mapbtn_thunk);
         logf("tab: bloc window created");
     }
     bloc_panel_refresh();
     win_show(g_blocwin, true);
     if (win_visible(g_cmdwin)) win_show(g_cmdwin, false);
+}
+extern "C" void __cdecl tcp_on_bloc_mapbtn() {
+    g_bloc_map = !g_bloc_map;
+    bloc_map_redraw();
+    bloc_panel_refresh();
 }
 extern "C" void __cdecl tcp_on_bloc_close() { win_show(g_blocwin, false); }
 extern "C" void __cdecl tcp_on_bloc_back() {
@@ -1637,6 +1764,15 @@ _tcp_bloc_close_thunk:
     pushfl
     cld
     call  _tcp_on_bloc_close
+    popfl
+    popal
+    ret
+    .globl _tcp_bloc_mapbtn_thunk
+_tcp_bloc_mapbtn_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_bloc_mapbtn
     popfl
     popal
     ret
@@ -1747,6 +1883,23 @@ void install_blocs() {
     logf(g_blocs_ok ? "blocs: war hooks installed" : "blocs: hook install FAILED");
 }
 
+
+void install_bloc_map() {
+    const uintptr_t sites[2] = {R(VA_POL_CALL_MODE), R(VA_POL_CALL_OTHER)};
+    for (uintptr_t site : sites) {
+        if (*(uint8_t*)site != 0xE8 || site + 5 + *(int32_t*)(site + 1) != R(VA_POL_PALETTE)) {
+            logf("bloc map: call at %08X differs; bloc map disabled", (unsigned)site);
+            return;
+        }
+    }
+    g_pol_target = R(VA_POL_PALETTE);
+    tcp_pol_fn = (void*)&pol_palette_hook;
+    int32_t r1 = (int32_t)((uintptr_t)&tcp_pol_mode_thunk - (sites[0] + 5));
+    int32_t r2 = (int32_t)((uintptr_t)&pol_palette_hook - (sites[1] + 5));
+    g_bloc_map_ok = write_code(sites[0] + 1, &r1, 4) && write_code(sites[1] + 1, &r2, 4);
+    logf(g_bloc_map_ok ? "bloc map: political palette hooked" : "bloc map: VirtualProtect failed");
+}
+
 void read_settings() {
     g_require_mod = GetPrivateProfileIntW(L"convert_pop", L"require_mod", 0, g_host->config_file) != 0;
     g_fix_merge_everywhere = GetPrivateProfileIntW(L"convert_pop", L"fix_merge_everywhere", 0, g_host->config_file) != 0;
@@ -1759,7 +1912,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-24b (blocs + bloc panel)");
+    logf("TGC Convert Pop build 2026-10-24c (blocs + panel + bloc map)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
@@ -1775,6 +1928,7 @@ extern "C" __declspec(dllexport) int TGL_PluginInit(const TGL_HostApi* host) {
     g_merge_fix_ok = install_merge_fix();
     install_topbar_tab();
     install_blocs();
+    if (g_blocs_ok) install_bloc_map();
     return install_commands() ? 0 : 2;
 }
 

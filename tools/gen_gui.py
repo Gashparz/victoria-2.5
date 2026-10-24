@@ -154,7 +154,7 @@ o += body
 add('\t}\n')
 # ---- bloc panel
 BL = 22
-BH = 58 + BL * 20 + 24
+BH = 84 + BL * 20 + 24
 add(f'''
 	# Bloc panel (filled by TGCConvertPop.dll)
 	windowType = {{
@@ -181,6 +181,25 @@ add(f'''
 			shortcut = "ESCAPE"
 		}}
 		guiButtonType = {{
+			name = "v2bloc_mapbtn"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = {{ x = {W-200} y = 12 }}
+			buttonText = "Harta on/off"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}}
+		instantTextBoxType = {{
+			name = "v2bloc_mapstate"
+			position = {{ x = 30 y = 54 }}
+			font = "vic_18"
+			borderSize = {{ x = 0 y = 0 }}
+			maxWidth = {W-60}
+			maxHeight = 22
+			text = " "
+			format = left
+			fixedsize = yes
+		}}
+		guiButtonType = {{
 			name = "v2bloc_back"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = {{ x = 22 y = 12 }}
@@ -203,7 +222,7 @@ add(f'''
 for i in range(BL):
     add(f'''		instantTextBoxType = {{
 			name = "v2bloc_l{i}"
-			position = {{ x = 30 y = {58 + i * 20} }}
+			position = {{ x = 30 y = {84 + i * 20} }}
 			font = "Arial12"
 			borderSize = {{ x = 0 y = 0 }}
 			maxWidth = {W-60}

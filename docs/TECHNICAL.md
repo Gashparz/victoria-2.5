@@ -80,3 +80,11 @@ The plugin destroys its windows when the topbar rebuilds or is destroyed, mirror
   - `0x43C450` adds a flag (ESI = flags, EAX = name).
   - The flags sit in a ternary trie: root at `flags+4`, node `{entry, char, lo, hi, eq}`.
 - Country tags: 64 hash buckets of CTag vectors at `countries+0x14` (16 bytes each).
+
+## Bloc map
+
+- `0x7FCA30` builds the political palette: `__stdcall (colourMap)` with colourMap = `mapView->vt38()+0x20BC`.
+  - colourMap `+0x1C` is a vector of entry pointers, one per province, from index 1.
+  - Entry `+0` is the owner colour and `+4` the controller colour, both ARGB. Entry `+0xC` is the province.
+- The calls at `0x66C4C3` (political map mode, ESI = map view) and `0x422A32` are redirected to the plugin. When the bloc map is on, the plugin runs the original and then overwrites the colours.
+- Redraw: map view `[+0x24]` holds 22 per-mode dirty flags; flag 1 makes the game rebuild the political palette on its next map update (`0x654530`).

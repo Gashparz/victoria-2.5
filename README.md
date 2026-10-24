@@ -28,6 +28,7 @@ Open the console with `~`. Province ids come from the built-in `showprovinceid` 
 | `remove_core <TAG> <prov> [more]` | Removes it |
 | `bloc_add <name> <TAGs>` | Puts countries into a **bloc** (mega alliance): when a member enters a war, every other living member joins the same side |
 | `bloc_remove <TAGs>`, `bloc_list [name]`, `bloc_disband <name>` | Manage blocs |
+| `bloc_map [on\|off]` | Bloc map: the political map mode colours each bloc (others grey) |
 
 A **filter** can be a culture (`polish`), a religion (`catholic`), a pop type (`farmers`) or a pop id taken from the list commands.
 
@@ -55,6 +56,8 @@ When the game adds a member to a war side, the plugin adds every other living me
 - Crisis and rebel wars, and loading a save, are left alone.
 
 The **Blocuri** button in the COMENZI window opens a panel that lists every bloc and its members. The panel updates as you change blocs.
+
+**Bloc map:** `bloc_map` or the **Harta on/off** button in the panel switches the political map mode to bloc colours. Owner and occupier both show their bloc colour, and countries outside a bloc turn grey.
 
 Set `blocs=0` in the ini to turn the feature off.
 
