@@ -68,3 +68,15 @@ Window:
 Button clicks: the observable is at `button+0x54` (vt `+4` AddObserver). The observer is a copy of the topbar's own `CButtonObserverGlue` at `topbar+0x218`, with the click method (`+8`) pointing to a register-preserving thunk.
 
 The plugin destroys its windows when the topbar rebuilds or is destroyed, mirroring what the topbar does with its own window, so no pointer outlives its window.
+
+## Blocs
+
+- War participants: `War+0x2C` attackers and `+0x3C` defenders, both vectors of CTag `{char tag[4], int index}`.
+- `War_AddAttacker 0x934280` / `War_AddDefender 0x935390`: `__stdcall (War*, bool join, bool b, CTag)`. A declaration (`0x913510`) calls them for the leaders and then for their allies with `join=1`, call-ally accepts do the same, and loading a save and crisis/rebel wars use `join=0`.
+- The plugin detours both (9-byte prologue moved to a trampoline). After a `join=1` add, the other members of the country's bloc are added to the same side. The attacker of a fresh declaration is held back until the defender exists.
+- A country is never added to both sides.
+- Country flags: CFlags at `country+0x1B0`.
+  - vt `+8` = find(const char*) returns an entry (name GStr `+0`, set byte `+0x1C`).
+  - `0x43C450` adds a flag (ESI = flags, EAX = name).
+  - The flags sit in a ternary trie: root at `flags+4`, node `{entry, char, lo, hi, eq}`.
+- Country tags: 64 hash buckets of CTag vectors at `countries+0x14` (16 bytes each).

@@ -1,5 +1,5 @@
 guiTypes = {
-	# Tab in topbar (created by TGCConvertPop.dll next to the Military tab). Move it by editing position.
+	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Move it by editing position.
 	windowType = {
 		name = "v2cmd_tab"
 		backGround = ""
@@ -57,8 +57,8 @@ guiTypes = {
 	windowType = {
 		name = "v2cmd_window"
 		backGround = "Background"
-		position = { x = -360 y = -350 }
-		size = { x = 720 y = 700 }
+		position = { x = -360 y = -249 }
+		size = { x = 720 y = 498 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -95,7 +95,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 22
-			text = "Deschide consola cu tasta ~ si scrie comanda. Id-ul unei provincii: showprovinceid, apoi mouse pe provincie."
+			text = "Deschide consola cu tasta ~ si scrie comanda. Id provincie: showprovinceid, apoi mouse pe provincie."
 			format = left
 			fixedsize = yes
 		}
@@ -117,7 +117,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "convert_pop <prov>                      cultura si religia proprietarului"
+			text = "convert_pop <prov> [cultura|-|owner] [religie|-|owner] [filtre]     schimba cultura/religia"
 			format = left
 			fixedsize = yes
 		}
@@ -128,7 +128,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "convert_pop <prov> <cultura> [religie]     '-' pastreaza valoarea, 'owner' = a proprietarului"
+			text = "list_prov_cultures <prov>   /   list_prov_religions <prov>      pop-uri: id | tip | cultura/religie | marime"
 			format = left
 			fixedsize = yes
 		}
@@ -139,7 +139,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "convert_pop <prov> <cultura> <religie> <filtre>     doar pop-urile potrivite"
+			text = "migrate_pop <din> <in> <filtre>        muta pop-urile potrivite      ex: migrate_pop 123 555 polish catholic"
 			format = left
 			fixedsize = yes
 		}
@@ -150,7 +150,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "      ex: convert_pop 652 serb - bulgarian farmers"
+			text = "migrate_all_pops <DIN> <SPRE> [accepted] [filtre]    cultura lui SPRE din tara DIN, impartita egal"
 			format = left
 			fixedsize = yes
 		}
@@ -161,7 +161,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "list_prov_cultures <prov>               pop-uri: id | tip | cultura | marime + totaluri"
+			text = "      ex: migrate_all_pops GER POL      migrate_all_pops GER POL accepted"
 			format = left
 			fixedsize = yes
 		}
@@ -172,7 +172,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "list_prov_religions <prov>              pop-uri: id | tip | religie | marime + totaluri"
+			text = "double_pop <prov> [filtre]      scale_pop <prov> <procent> [filtre]      (200 = dublu, 50 = jumatate)"
 			format = left
 			fixedsize = yes
 		}
@@ -183,7 +183,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "migrate_pop <din> <in> <filtre>         muta pop-urile care se potrivesc cu TOATE filtrele"
+			text = "scale_country_pop <TAG> <procent> [filtre]     toata tara      ex: scale_country_pop SER 200 serb"
 			format = left
 			fixedsize = yes
 		}
@@ -194,194 +194,95 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "      filtru = cultura, religie, tip de pop sau id de pop      ex: migrate_pop 123 555 polish catholic"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_line11"
-			position = { x = 30 y = 276 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "migrate_all_pops <DIN> <SPRE> [filtre]   pop-urile culturii principale a lui SPRE din tara DIN"
+			text = "Filtru = cultura, religie, tip de pop (farmers) sau id de pop. Toate filtrele trebuie sa se potriveasca."
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line12"
-			position = { x = 30 y = 296 }
-			font = "Arial12"
+			position = { x = 30 y = 286 }
+			font = "vic_18"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
-			maxHeight = 18
-			text = "      se impart egal in provinciile lui SPRE      ex: migrate_all_pops GER POL"
+			maxHeight = 22
+			text = "CULTURI SI CORE-URI"
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line13"
-			position = { x = 30 y = 316 }
+			position = { x = 30 y = 310 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "      migrate_all_pops GER POL accepted     = cultura principala + toate culturile acceptate"
+			text = "accept_culture <TAG> [culturi]     unaccept_culture <TAG> <culturi>      (doar TAG = lista)"
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
-			name = "v2cmd_line15"
-			position = { x = 30 y = 346 }
-			font = "vic_18"
+			name = "v2cmd_line14"
+			position = { x = 30 y = 330 }
+			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
-			maxHeight = 22
-			text = "CULTURI ACCEPTATE"
+			maxHeight = 18
+			text = "add_core <TAG> <prov> [alte prov]      remove_core <TAG> <prov> [alte prov]      ex: add_core SER 652 653"
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line16"
-			position = { x = 30 y = 370 }
-			font = "Arial12"
+			position = { x = 30 y = 360 }
+			font = "vic_18"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
-			maxHeight = 18
-			text = "accept_culture <TAG> [culturi]           adauga culturi acceptate (doar TAG = le listeaza)"
+			maxHeight = 22
+			text = "BLOCURI (mega aliante)"
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line17"
-			position = { x = 30 y = 390 }
+			position = { x = 30 y = 384 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "unaccept_culture <TAG> <culturi>         scoate culturi acceptate      ex: accept_culture POL kashubian"
+			text = "bloc_add <nume> <TAG> [alte tag-uri]       ex: bloc_add puterile_centrale GER AUS TUR BUL"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_line18"
+			position = { x = 30 y = 404 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "bloc_remove <TAG>     bloc_list [nume]     bloc_disband <nume>"
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line19"
-			position = { x = 30 y = 420 }
-			font = "vic_18"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 22
-			text = "NOTE"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_line20"
-			position = { x = 30 y = 444 }
+			position = { x = 30 y = 424 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "Numele sunt cele din script: polish, catholic, farmers. Totalurile se recalculeaza a doua zi in joc."
+			text = "Intr-un razboi, toti membrii vii intra de partea membrului implicat. Blocul se pastreaza in salvare."
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line21"
-			position = { x = 30 y = 464 }
+			position = { x = 30 y = 454 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "Pop-urile mutate se unesc cu un pop identic (tip, cultura, religie) din provincia tinta."
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_line22"
-			position = { x = 30 y = 484 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "Jurnal: the_grand_loader.log langa v2game.exe."
-			format = left
-			fixedsize = yes
-		}
-			instantTextBoxType = {
-			name = "v2cmd_extra0"
-			position = { x = 30 y = 514 }
-			font = "vic_18"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 22
-			text = "MARIME POPULATIE"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_extra1"
-			position = { x = 30 y = 538 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "double_pop <prov> [filtre]                dubleaza pop-urile din provincie      ex: double_pop 652 serb"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_extra2"
-			position = { x = 30 y = 558 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "scale_pop <prov> <procent> [filtre]     200 = dublu, 50 = jumatate, 150 = +50%      ex: scale_pop 652 150 farmers"
-			format = left
-			fixedsize = yes
-		}
-			instantTextBoxType = {
-			name = "v2cmd_more0"
-			position = { x = 30 y = 578 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "scale_country_pop <TAG> <procent> [filtre]   toate provinciile tarii      ex: scale_country_pop SER 200 serb"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_more1"
-			position = { x = 30 y = 604 }
-			font = "vic_18"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 22
-			text = "CORE-URI"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_more2"
-			position = { x = 30 y = 628 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "add_core <TAG> <prov> [alte prov]           adauga core      ex: add_core SER 652 653"
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2cmd_more3"
-			position = { x = 30 y = 648 }
-			font = "Arial12"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 660
-			maxHeight = 18
-			text = "remove_core <TAG> <prov> [alte prov]      scoate core      ex: remove_core TUR 652"
+			text = "Jurnal: the_grand_loader.log langa v2game.exe. Totalurile de populatie se actualizeaza a doua zi."
 			format = left
 			fixedsize = yes
 		}

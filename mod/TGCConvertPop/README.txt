@@ -36,6 +36,13 @@ Console commands (single player)
   add_core <TAG> <prov> [more]              adds the country's core      add_core SER 652 653
   remove_core <TAG> <prov> [more]           removes it                   remove_core TUR 652
 
+  bloc_add <name> <TAG> [more tags]         puts countries into a bloc (mega alliance)
+        bloc_add central_powers GER AUS TUR BUL
+  bloc_remove <TAG> [more]   bloc_list [name]   bloc_disband <name>
+        When a bloc member enters a war (declares, is attacked, or joins as an ally), every other
+        living member joins the same side. Stored as the country flag bloc_<name>, so it is saved
+        in the save game. Normal alliances are untouched. Crisis and rebel wars are not affected.
+
 Pop merging: the game merges a moving pop into any pop of the same type and religion,
 ignoring culture (vanilla bug). migrate_pop uses a fixed check (same type, culture AND religion).
 fix_merge_everywhere=1 in mod\TGCConvertPop.ini fixes it for the whole game too.

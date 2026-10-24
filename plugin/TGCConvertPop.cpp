@@ -968,6 +968,279 @@ ConsoleResult* core_cmd(ConsoleResult* out, ArgVector* args, bool add) {
 extern "C" ConsoleResult* __cdecl cmd_add_core(ConsoleResult* out, ArgVector* args) { return core_cmd(out, args, true); }
 extern "C" ConsoleResult* __cdecl cmd_remove_core(ConsoleResult* out, ArgVector* args) { return core_cmd(out, args, false); }
 
+
+// ================= blocs (mega alliances) =================
+// A bloc is a set of countries carrying the country flag "bloc_<name>" (so it is saved in the save game and
+// visible to events through has_country_flag). Whenever the game adds a bloc member to a war side with the
+// "real join" flag (declaration, its allies, call-ally accepts), every other living member of that bloc is
+// added to the same side right after, unless it is already in that war. Loading a save or crisis/rebel wars
+// use the flag 0 and are left alone. The game's own alliances are untouched.
+//
+// War: +0x2C attackers, +0x3C defenders (vectors of CTag {char tag[4], int index}).
+// War_AddAttacker 0x00934280 / War_AddDefender 0x00935390: __stdcall (War*, bool join, bool b, CTag by value).
+// Country flags: CFlags at country+0x1B0; vt+8 find(const char*) -> entry (GStr name at +0, bool set +0x1C);
+// 0x0043C450 sets a flag (ESI = flags, EAX = name). Flags live in a ternary trie: root at flags+4, node =
+// {entry, char, lo, hi, eq}.
+constexpr uintptr_t VA_WAR_ADD_ATT = 0x00934280, VA_WAR_ADD_DEF = 0x00935390, VA_FLAG_SET = 0x0043C450;
+typedef uint32_t(__stdcall* WarAddFn)(uintptr_t war, uint32_t join, uint32_t b, uint32_t tag, uint32_t index);
+WarAddFn g_add_att = nullptr, g_add_def = nullptr;  // trampolines to the originals
+bool g_blocs_ok = false;
+}  // namespace
+extern "C" void tcp_flagset_thunk(uintptr_t fn, uintptr_t flags, const char* name);
+asm(R"(
+    .text
+    .globl _tcp_flagset_thunk
+_tcp_flagset_thunk:
+    pushl %ebp
+    movl  %esp, %ebp
+    pushl %ebx
+    pushl %esi
+    pushl %edi
+    movl  12(%ebp), %esi
+    movl  16(%ebp), %eax
+    call  *8(%ebp)
+    popl  %edi
+    popl  %esi
+    popl  %ebx
+    popl  %ebp
+    ret
+)");
+namespace {
+
+uintptr_t country_flags(uintptr_t country) { return country + 0x1B0; }
+uintptr_t flag_find(uintptr_t country, const char* name) {
+    uintptr_t f = country_flags(country);
+    typedef uintptr_t(__fastcall * FindFn)(uintptr_t, void*, const char*);
+    FindFn fn = reinterpret_cast<FindFn>(rd<uintptr_t>(rd<uintptr_t>(f) + 8));
+    return fn(f, nullptr, name);
+}
+void flag_set(uintptr_t country, const char* name, bool on) {
+    uintptr_t e = flag_find(country, name);
+    if (e) { *reinterpret_cast<uint8_t*>(e + 0x1C) = on ? 1 : 0; return; }
+    if (on) tcp_flagset_thunk(R(VA_FLAG_SET), country_flags(country), name);
+}
+// Calls fn(name) for every flag that is set.
+template <typename F>
+void flag_walk(uintptr_t node, F& fn, int depth) {
+    if (!node || depth > 200) return;
+    uintptr_t e = rd<uintptr_t>(node);
+    if (e && rd<uint8_t>(e + 0x1C)) fn(gs_cstr(reinterpret_cast<const GameString*>(e)));
+    flag_walk(rd<uintptr_t>(node + 8), fn, depth + 1);
+    flag_walk(rd<uintptr_t>(node + 0xC), fn, depth + 1);
+    flag_walk(rd<uintptr_t>(node + 0x10), fn, depth + 1);
+}
+// The bloc of a country ("" if none), copied into out.
+bool country_bloc(uintptr_t country, char* out, size_t n) {
+    out[0] = 0;
+    if (!country) return false;
+    auto fn = [&](const char* name) {
+        if (!out[0] && _strnicmp(name, "bloc_", 5) == 0 && name[5]) snprintf(out, n, "%s", name + 5);
+    };
+    flag_walk(rd<uintptr_t>(country_flags(country) + 4), fn, 0);
+    return out[0] != 0;
+}
+bool country_alive(uintptr_t country) { return country && rd<uintptr_t>(country + 0x9DC) > rd<uintptr_t>(country + 0x9D8); }
+
+// Every real country: {tag chars, index} from the tag hash table (64 buckets of CTag vectors at mgr+0x14).
+template <typename F>
+void for_each_tag(F fn) {
+    uintptr_t mgr = rd<uintptr_t>(R(VA_G_COUNTRIES));
+    if (!mgr) return;
+    for (int b = 0; b < 64; ++b) {
+        uint32_t* it = rd<uint32_t*>(mgr + 0x14 + b * 0x10);
+        uint32_t* end = rd<uint32_t*>(mgr + 0x18 + b * 0x10);
+        for (; it && it < end; it += 2)
+            if (it[1]) fn(it[0], it[1]);
+    }
+}
+const char* tag_text(uint32_t tag, char* buf) { memcpy(buf, &tag, 3); buf[3] = 0; return buf; }
+
+bool war_has(uintptr_t war, int side_off, uint32_t index) {
+    uint32_t* b = rd<uint32_t*>(war + side_off);
+    uint32_t* e = rd<uint32_t*>(war + side_off + 4);
+    for (uint32_t* it = b; b && it < e; it += 2)
+        if (it[1] == index) return true;
+    return false;
+}
+uint32_t war_leader(uintptr_t war, int side_off) {
+    uint32_t* b = rd<uint32_t*>(war + side_off);
+    uint32_t* e = rd<uint32_t*>(war + side_off + 4);
+    return (b && b < e) ? b[1] : 0;
+}
+
+// Adds the bloc mates of `index` to the given side of `war`.
+void bloc_pull(uintptr_t war, bool attackers, uint32_t index) {
+    char bloc[64];
+    if (!country_bloc(country_at((int)index), bloc, sizeof(bloc))) return;
+    // members of the same bloc fighting each other: the bloc stays out
+    char other[64];
+    uint32_t enemy = war_leader(war, attackers ? 0x3C : 0x2C);
+    if (enemy && country_bloc(country_at((int)enemy), other, sizeof(other)) && _stricmp(other, bloc) == 0) {
+        logf("bloc %s: its members lead both sides of a war, nobody pulled in", bloc);
+        return;
+    }
+    int added = 0;
+    for_each_tag([&](uint32_t tag, uint32_t idx) {
+        if (idx == index || war_has(war, 0x2C, idx) || war_has(war, 0x3C, idx)) return;
+        uintptr_t c = country_at((int)idx);
+        char b2[64];
+        if (!country_alive(c) || !country_bloc(c, b2, sizeof(b2)) || _stricmp(b2, bloc) != 0) return;
+        (attackers ? g_add_att : g_add_def)(war, 1, 0, tag, idx);
+        char t[4];
+        logf("bloc %s: %s joins the war on the %s side", bloc, tag_text(tag, t), attackers ? "attacker" : "defender");
+        ++added;
+    });
+    (void)added;
+}
+
+// A declaration adds the attacker before the defender exists: remember it until the defender is added.
+struct Pending { uintptr_t war; uint32_t index; };
+Pending g_pending[16];
+int g_npending = 0;
+
+uint32_t __stdcall war_add_att_hook(uintptr_t war, uint32_t join, uint32_t b, uint32_t tag, uint32_t index) {
+    if (war_has(war, 0x3C, index)) return 0;  // never on both sides
+    uint32_t r = g_add_att(war, join, b, tag, index);
+    if (!(join & 0xFF)) return r;
+    if (!war_leader(war, 0x3C)) {
+        if (g_npending < 16) g_pending[g_npending++] = {war, index};
+        return r;
+    }
+    bloc_pull(war, true, index);
+    return r;
+}
+uint32_t __stdcall war_add_def_hook(uintptr_t war, uint32_t join, uint32_t b, uint32_t tag, uint32_t index) {
+    if (war_has(war, 0x2C, index)) return 0;
+    uint32_t r = g_add_def(war, join, b, tag, index);
+    if (!(join & 0xFF)) return r;
+    for (int i = 0; i < g_npending;) {
+        if (g_pending[i].war == war) {
+            uint32_t att = g_pending[i].index;
+            g_pending[i] = g_pending[--g_npending];
+            bloc_pull(war, true, att);
+        } else {
+            ++i;
+        }
+    }
+    bloc_pull(war, false, index);
+    return r;
+}
+
+bool valid_bloc_name(const char* s) {
+    size_t n = strlen(s);
+    if (n < 1 || n > 24) return false;
+    for (size_t i = 0; i < n; ++i)
+        if (!isalnum((unsigned char)s[i]) && s[i] != '_') return false;
+    return true;
+}
+void lower(char* s) { for (; *s; ++s) *s = (char)tolower((unsigned char)*s); }
+
+extern "C" ConsoleResult* __cdecl cmd_bloc_add(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (!g_blocs_ok) return reply(out, false, "bloc_add: disabled, the war hooks could not be installed (see the log).");
+    if (arg_count(args) < 2) return reply(out, false, "Usage: bloc_add <bloc name> <TAG> [more tags]  e.g. bloc_add central_powers GER AUS TUR");
+    char name[32];
+    snprintf(name, sizeof(name), "%s", arg_text(args, 0));
+    lower(name);
+    if (!valid_bloc_name(name)) return reply(out, false, "bloc_add: the name may use letters, digits and _ (max 24).");
+    char flag[40];
+    snprintf(flag, sizeof(flag), "bloc_%s", name);
+    Text t;
+    int done = 0;
+    for (int i = 1; i < arg_count(args); ++i) {
+        const char* tag = arg_text(args, i);
+        int ci = country_index(tag);
+        if (ci < 0) { t.add("%s: unknown country.\n", tag); continue; }
+        uintptr_t c = country_at(ci);
+        char cur[64];
+        if (country_bloc(c, cur, sizeof(cur))) {
+            if (_stricmp(cur, name) == 0) t.add("%s is already in %s.\n", tag, name);
+            else t.add("%s is in bloc %s: bloc_remove %s first.\n", tag, cur, tag);
+            continue;
+        }
+        flag_set(c, flag, true);
+        ++done;
+        t.add("%s joins %s.\n", tag, name);
+    }
+    logf("bloc_add %s: %d countries", name, done);
+    t.add("Bloc %s: %d added. In a war every living member joins the side of the member that is in it.", name, done);
+    return finish(out, done > 0, t);
+}
+
+extern "C" ConsoleResult* __cdecl cmd_bloc_remove(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 1) return reply(out, false, "Usage: bloc_remove <TAG> [more tags]");
+    Text t;
+    int done = 0;
+    for (int i = 0; i < arg_count(args); ++i) {
+        const char* tag = arg_text(args, i);
+        int ci = country_index(tag);
+        if (ci < 0) { t.add("%s: unknown country.\n", tag); continue; }
+        uintptr_t c = country_at(ci);
+        char cur[64], flag[80];
+        if (!country_bloc(c, cur, sizeof(cur))) { t.add("%s is in no bloc.\n", tag); continue; }
+        snprintf(flag, sizeof(flag), "bloc_%s", cur);
+        flag_set(c, flag, false);
+        ++done;
+        t.add("%s left %s.\n", tag, cur);
+    }
+    return finish(out, done > 0, t);
+}
+
+extern "C" ConsoleResult* __cdecl cmd_bloc_disband(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 1) return reply(out, false, "Usage: bloc_disband <bloc name>");
+    char name[32], flag[40];
+    snprintf(name, sizeof(name), "%s", arg_text(args, 0));
+    lower(name);
+    snprintf(flag, sizeof(flag), "bloc_%s", name);
+    int n = 0;
+    for_each_tag([&](uint32_t, uint32_t idx) {
+        uintptr_t c = country_at((int)idx);
+        uintptr_t e = c ? flag_find(c, flag) : 0;
+        if (e && rd<uint8_t>(e + 0x1C)) { *reinterpret_cast<uint8_t*>(e + 0x1C) = 0; ++n; }
+    });
+    return reply(out, n > 0, n ? "Bloc %s disbanded (%d members)." : "No bloc called %s.", name, n);
+}
+
+extern "C" ConsoleResult* __cdecl cmd_bloc_list(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    const char* only = arg_count(args) >= 1 ? arg_text(args, 0) : nullptr;
+    struct Entry { char bloc[32]; char tag[4]; bool alive; };
+    static Entry list[1024];
+    int n = 0;
+    for_each_tag([&](uint32_t tag, uint32_t idx) {
+        uintptr_t c = country_at((int)idx);
+        char b[64];
+        if (n < 1024 && country_bloc(c, b, sizeof(b)) && (!only || _stricmp(only, b) == 0)) {
+            snprintf(list[n].bloc, sizeof(list[n].bloc), "%s", b);
+            tag_text(tag, list[n].tag);
+            list[n].alive = country_alive(c);
+            ++n;
+        }
+    });
+    if (!n) return reply(out, false, only ? "No bloc called %s." : "No blocs. Create one: bloc_add <name> <TAG> [tags]", only);
+    Text t;
+    bool done[1024] = {false};
+    for (int i = 0; i < n; ++i) {
+        if (done[i]) continue;
+        int cnt = 0;
+        for (int k = i; k < n; ++k) cnt += _stricmp(list[k].bloc, list[i].bloc) == 0;
+        t.add("%s (%d): ", list[i].bloc, cnt);
+        for (int k = i; k < n; ++k)
+            if (!done[k] && _stricmp(list[k].bloc, list[i].bloc) == 0) {
+                done[k] = true;
+                t.add("%s%s ", list[k].tag, list[k].alive ? "" : "(dead)");
+            }
+        t.add("\n");
+    }
+    return finish(out, true, t);
+}
+
 // ================= console table extension =================
 struct NewCommand {
     const char* name;
@@ -1003,6 +1276,11 @@ const NewCommand kCommands[] = {
     {"scale_country_pop", "scalecountrypop", "Multiplies the pops of every province a country owns (optionally one culture/religion/type) by a percentage.",
      (void*)&cmd_scale_country_pop, 3, {"country tag", "percent", "<filters>"}},
     {"add_core", "addcore", "Adds a country's core to one or more provinces.", (void*)&cmd_add_core, 2, {"country tag", "province ids"}},
+    {"bloc_add", "blocadd", "Puts countries into a bloc (mega alliance): in a war, all living members join the side of the member in it.",
+     (void*)&cmd_bloc_add, 2, {"bloc name", "tags"}},
+    {"bloc_remove", "blocremove", "Takes countries out of their bloc.", (void*)&cmd_bloc_remove, 1, {"tags"}},
+    {"bloc_list", "bloclist", "Lists the blocs and their members.", (void*)&cmd_bloc_list, 1, {"<bloc name>"}},
+    {"bloc_disband", "blocdisband", "Removes every member of a bloc.", (void*)&cmd_bloc_disband, 1, {"bloc name"}},
     {"remove_core", "removecore", "Removes a country's core from one or more provinces.", (void*)&cmd_remove_core, 2, {"country tag", "province ids"}},
 };
 constexpr int kNew = sizeof(kCommands) / sizeof(kCommands[0]);
@@ -1109,6 +1387,7 @@ inline void* vcall1(void* o, int off, void* a) { return ((VFn1)vslot(o, off))(o,
 inline void* vcall2(void* o, int off, void* a, void* b) { return ((VFn2)vslot(o, off))(o, nullptr, a, b); }
 
 bool g_tab_enabled = true;
+bool g_blocs_enabled = true;
 void* g_topbar = nullptr;   // the live topbar object
 void* g_tab = nullptr;      // our "v2cmd_tab" window
 void* g_cmdwin = nullptr;   // our "v2cmd_window"
@@ -1275,10 +1554,41 @@ void install_topbar_tab() {
     logf(ok ? "tab: topbar hooks installed" : "tab: VirtualProtect failed");
 }
 
+
+// 9-byte prologue of both War_Add functions: push ebp / mov ebp,esp / mov eax,fs:[0]
+void* make_detour(uintptr_t target, void* hook) {
+    const uint8_t expect[9] = {0x55, 0x8B, 0xEC, 0x64, 0xA1, 0x00, 0x00, 0x00, 0x00};
+    if (memcmp((void*)target, expect, 9) != 0) return nullptr;
+    uint8_t* tramp = (uint8_t*)VirtualAlloc(nullptr, 32, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+    if (!tramp) return nullptr;
+    memcpy(tramp, expect, 9);
+    tramp[9] = 0xE9;
+    int32_t back = (int32_t)((target + 9) - ((uintptr_t)tramp + 14));
+    memcpy(tramp + 10, &back, 4);
+    uint8_t patch[9] = {0xE9, 0, 0, 0, 0, 0x90, 0x90, 0x90, 0x90};
+    int32_t rel = (int32_t)((uintptr_t)hook - (target + 5));
+    memcpy(patch + 1, &rel, 4);
+    if (!write_code(target, patch, 9)) return nullptr;
+    return tramp;
+}
+void install_blocs() {
+    if (!g_blocs_enabled) { logf("blocs: disabled (blocs=0)"); return; }
+    const uint8_t expect[9] = {0x55, 0x8B, 0xEC, 0x64, 0xA1, 0x00, 0x00, 0x00, 0x00};
+    if (memcmp((void*)R(VA_WAR_ADD_ATT), expect, 9) != 0 || memcmp((void*)R(VA_WAR_ADD_DEF), expect, 9) != 0) {
+        logf("blocs: war functions differ (another DLL hooked them?); blocs disabled");
+        return;
+    }
+    g_add_att = (WarAddFn)make_detour(R(VA_WAR_ADD_ATT), (void*)&war_add_att_hook);
+    g_add_def = g_add_att ? (WarAddFn)make_detour(R(VA_WAR_ADD_DEF), (void*)&war_add_def_hook) : nullptr;
+    g_blocs_ok = g_add_att && g_add_def;
+    logf(g_blocs_ok ? "blocs: war hooks installed" : "blocs: hook install FAILED");
+}
+
 void read_settings() {
     g_require_mod = GetPrivateProfileIntW(L"convert_pop", L"require_mod", 0, g_host->config_file) != 0;
     g_fix_merge_everywhere = GetPrivateProfileIntW(L"convert_pop", L"fix_merge_everywhere", 0, g_host->config_file) != 0;
     g_tab_enabled = GetPrivateProfileIntW(L"convert_pop", L"topbar_tab", 1, g_host->config_file) != 0;
+    g_blocs_enabled = GetPrivateProfileIntW(L"convert_pop", L"blocs", 1, g_host->config_file) != 0;
     const char* cmd = GetCommandLineA();
     char lower[4096];
     size_t n = cmd ? strlen(cmd) : 0;
@@ -1286,7 +1596,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-23b (scale_country_pop, add/remove_core, migrate_all_pops FROM TO)");
+    logf("TGC Convert Pop build 2026-10-24 (blocs)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
@@ -1301,6 +1611,7 @@ extern "C" __declspec(dllexport) int TGL_PluginInit(const TGL_HostApi* host) {
     read_settings();
     g_merge_fix_ok = install_merge_fix();
     install_topbar_tab();
+    install_blocs();
     return install_commands() ? 0 : 2;
 }
 

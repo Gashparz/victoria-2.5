@@ -26,6 +26,8 @@ Open the console with `~`. Province ids come from the built-in `showprovinceid` 
 | `scale_country_pop <TAG> <percent> [filters]` | Same, in every province the country owns |
 | `add_core <TAG> <prov> [more]` | Adds the country's core to provinces |
 | `remove_core <TAG> <prov> [more]` | Removes it |
+| `bloc_add <name> <TAGs>` | Puts countries into a **bloc** (mega alliance): when a member enters a war, every other living member joins the same side |
+| `bloc_remove <TAGs>`, `bloc_list [name]`, `bloc_disband <name>` | Manage blocs |
 
 A **filter** can be a culture (`polish`), a religion (`catholic`), a pop type (`farmers`) or a pop id taken from the list commands.
 
@@ -37,10 +39,22 @@ migrate_pop 123 555 polish catholic
 migrate_all_pops GER POL accepted
 scale_country_pop SER 200 serb
 add_core SER 652 653
+bloc_add central_powers GER AUS TUR BUL
 double_pop 652 serb
 ```
 
 `migrate_pop` merges a pop only into a destination pop with the same type, culture **and** religion. The vanilla merge ignores culture, which is why moved Serbs used to become Bulgarians. Set `fix_merge_everywhere=1` in `mod/TGCConvertPop.ini` to apply the same fix to the whole game.
+
+### Blocs
+
+A bloc sits on top of the normal alliances, which it never changes. Members are stored as the country flag `bloc_<name>`, so blocs are kept in the save and events can test them with `has_country_flag`. Members never leave on their own.
+
+When the game adds a member to a war side, the plugin adds every other living member of the bloc to the same side, unless it is already in that war. That covers declaring war, being attacked and joining as an ally. Two exceptions:
+
+- If both war leaders are in the same bloc, nobody else is pulled in.
+- Crisis and rebel wars, and loading a save, are left alone.
+
+Set `blocs=0` in the ini to turn the feature off.
 
 ### Top bar tab
 
