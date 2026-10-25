@@ -46,6 +46,17 @@ Console commands (single player)
   bloc_map [on|off]   the political map mode shows each bloc in its own colour (others grey);
         also the "Harta on/off" button in the bloc panel.
 
+  Power blocs (Victoria 3 style):
+  bloc_invite <bloc> <TAG>        the AI accepts or refuses (relations, religion, size, prestige, cohesion)
+  bloc_identity <bloc> <militar|comercial|imperiu|religios>     bloc_leader <TAG>     bloc_info [bloc]
+        militar    members join wars together; relations with the leader +2/month
+        comercial  relations between all members +3/month
+        imperiu    leader +0.5 prestige per member per month
+        religios   each month one small pop (<= 3000) per member converts to the leader's religion
+  Cohesion 0-100 (relations with the leader, size, shared religion, members at war with each other):
+        below 20 (Fracturat) only the leader's wars pull the bloc in.
+  The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects, members table.
+
 Pop merging: the game merges a moving pop into any pop of the same type and religion,
 ignoring culture (vanilla bug). migrate_pop uses a fixed check (same type, culture AND religion).
 fix_merge_everywhere=1 in mod\TGCConvertPop.ini fixes it for the whole game too.

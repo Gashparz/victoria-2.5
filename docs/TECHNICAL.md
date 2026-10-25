@@ -88,3 +88,10 @@ The plugin destroys its windows when the topbar rebuilds or is destroyed, mirror
   - Entry `+0` is the owner colour and `+4` the controller colour, both ARGB. Entry `+0xC` is the province.
 - The calls at `0x66C4C3` (political map mode, ESI = map view) and `0x422A32` are redirected to the plugin. When the bloc map is on, the plugin runs the original and then overwrites the colours.
 - Redraw: map view `[+0x24]` holds 22 per-mode dirty flags; flag 1 makes the game rebuild the political palette on its next map update (`0x654530`).
+
+## Power blocs
+
+- Flags: `bloc_<name>` (membership), `blocleader`, `blocid_<identity>` (on the leader).
+- Relations: `country+0xBE8[other]+0x3C` (×1000, ±200). Prestige: `country+0xEA0` (×1000).
+- Monthly effects: the call to `DayTick` at `0x683AB1` (stdcall world) is redirected. When the month changes (date `world+0xB0C`, month table `0xF1027C`), the plugin applies the identity effects.
+- Text boxes: window vt `+0x3C` finds a text box. The plugin assigns its `std::string` at `+0xDC` and calls `SetText 0xA5ECC0` (ESI = `[box+0xA0]`), as the game does everywhere.

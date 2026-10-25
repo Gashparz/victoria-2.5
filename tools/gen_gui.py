@@ -20,10 +20,11 @@ lines = [
  (L, "accept_culture <TAG> [culturi]     unaccept_culture <TAG> <culturi>      (doar TAG = lista)"),
  (L, "add_core <TAG> <prov> [alte prov]      remove_core <TAG> <prov> [alte prov]      ex: add_core SER 652 653"),
  None,
- (H_, "BLOCURI (mega aliante)"),
- (L, "bloc_add <nume> <TAG> [alte tag-uri]       ex: bloc_add puterile_centrale GER AUS TUR BUL"),
- (L, "bloc_remove <TAG>     bloc_list [nume]     bloc_disband <nume>"),
- (L, "Intr-un razboi, toti membrii vii intra de partea membrului implicat. Blocul se pastreaza in salvare."),
+ (H_, "BLOCURI (ca in Victoria 3)"),
+ (L, "bloc_add <nume> <TAG> [alte tag-uri]  (forteaza)      bloc_invite <bloc> <TAG>  (AI-ul accepta sau refuza)"),
+ (L, "bloc_identity <bloc> militar|comercial|imperiu|religios      bloc_leader <TAG>      bloc_info [bloc]"),
+ (L, "bloc_remove <TAG>     bloc_list     bloc_disband <nume>     bloc_map [on|off]  (harta politica pe blocuri)"),
+ (L, "In razboi, membrii intra de partea membrului implicat. Panoul Blocuri arata coeziunea si efectele identitatii."),
  None,
  (L, "Jurnal: the_grand_loader.log langa v2game.exe. Totalurile de populatie se actualizeaza a doua zi."),
 ]
@@ -152,10 +153,34 @@ add(f'''
 ''')
 o += body
 add('\t}\n')
-# ---- bloc panel
-BL = 22
-BH = 84 + BL * 20 + 24
-add(f'''
+# ---- bloc panel (one bloc per page, filled by TGCConvertPop.dll)
+ROWS = 16
+COLS = [(30, 175), (210, 125), (340, 95), (440, 95), (540, 150)]
+BH = 182 + (ROWS) * 18 + 100
+def tbox(name, x, y, font, w, h, fmt="left"):
+    return f"""		instantTextBoxType = {{
+			name = "{name}"
+			position = {{ x = {x} y = {y} }}
+			font = "{font}"
+			borderSize = {{ x = 0 y = 0 }}
+			maxWidth = {w}
+			maxHeight = {h}
+			text = " "
+			format = {fmt}
+			fixedsize = yes
+		}}
+"""
+def button(name, sprite, x, y, text):
+    return f"""		guiButtonType = {{
+			name = "{name}"
+			quadTextureSprite = "{sprite}"
+			position = {{ x = {x} y = {y} }}
+			buttonText = "{text}"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}}
+"""
+add(f"""
 	# Bloc panel (filled by TGCConvertPop.dll)
 	windowType = {{
 		name = "v2bloc_window"
@@ -180,58 +205,24 @@ add(f'''
 			Orientation = "UPPER_LEFT"
 			shortcut = "ESCAPE"
 		}}
-		guiButtonType = {{
-			name = "v2bloc_mapbtn"
-			quadTextureSprite = "GFX_button_standard_144"
-			position = {{ x = {W-200} y = 12 }}
-			buttonText = "Harta on/off"
-			buttonFont = "vic_18_black"
-			Orientation = "UPPER_LEFT"
-		}}
-		instantTextBoxType = {{
-			name = "v2bloc_mapstate"
-			position = {{ x = 30 y = 54 }}
-			font = "vic_18"
-			borderSize = {{ x = 0 y = 0 }}
-			maxWidth = {W-60}
-			maxHeight = 22
-			text = " "
-			format = left
-			fixedsize = yes
-		}}
-		guiButtonType = {{
-			name = "v2bloc_back"
-			quadTextureSprite = "GFX_button_standard_144"
-			position = {{ x = 22 y = 12 }}
-			buttonText = "Comenzi"
-			buttonFont = "vic_18_black"
-			Orientation = "UPPER_LEFT"
-		}}
-		instantTextBoxType = {{
-			name = "v2bloc_header"
-			position = {{ x = 0 y = 16 }}
-			font = "vic_22"
-			borderSize = {{ x = 0 y = 0 }}
-			maxWidth = {W}
-			maxHeight = 30
-			text = "Blocuri"
-			format = centre
-			fixedsize = yes
-		}}
-''')
-for i in range(BL):
-    add(f'''		instantTextBoxType = {{
-			name = "v2bloc_l{i}"
-			position = {{ x = 30 y = {84 + i * 20} }}
-			font = "Arial12"
-			borderSize = {{ x = 0 y = 0 }}
-			maxWidth = {W-60}
-			maxHeight = 18
-			text = " "
-			format = left
-			fixedsize = yes
-		}}
-''')
+""")
+add(button("v2bloc_back", "GFX_button_standard_144", 22, 12, "Comenzi"))
+add(button("v2bloc_mapbtn", "GFX_button_standard_144", W - 200, 12, "Harta on/off"))
+add(tbox("v2bloc_header", 0, 16, "vic_22", W, 30, "centre"))
+add(tbox("v2bloc_info1", 30, 52, "Arial12", W - 60, 18))
+add(tbox("v2bloc_info2", 30, 72, "vic_18", W - 60, 22))
+add(tbox("v2bloc_bar", 30, 96, "Arial12", W - 60, 18))
+add(tbox("v2bloc_eff1", 30, 118, "Arial12", W - 60, 18))
+add(tbox("v2bloc_eff2", 30, 136, "Arial12", W - 60, 18))
+for r in range(ROWS + 1):
+    y = 162 if r == 0 else 184 + (r - 1) * 18
+    for c, (x, w) in enumerate(COLS):
+        add(tbox(f"v2bloc_r{r}c{c}", x, y, "vic_18" if r == 0 else "Arial12", w, 22 if r == 0 else 18))
+yb = 184 + ROWS * 18 + 10
+add(button("v2bloc_prev", "GFX_button_standard_144", 22, yb, "< Anterior"))
+add(tbox("v2bloc_page", 0, yb + 8, "vic_18", W, 22, "centre"))
+add(button("v2bloc_next", "GFX_button_standard_144", W - 22 - 144, yb, "Urmator >"))
+add(tbox("v2bloc_mapstate", 30, yb + 44, "Arial12", W - 60, 18))
 add('\t}\n}\n')
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))
 open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r\n').write(f'''spriteTypes = {{

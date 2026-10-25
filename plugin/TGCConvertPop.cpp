@@ -1068,6 +1068,7 @@ uint32_t war_leader(uintptr_t war, int side_off) {
     return (b && b < e) ? b[1] : 0;
 }
 
+int bloc_cohesion_for(const char* bloc, uint32_t* leader_out);
 // Adds the bloc mates of `index` to the given side of `war`.
 void bloc_pull(uintptr_t war, bool attackers, uint32_t index) {
     char bloc[64];
@@ -1077,6 +1078,12 @@ void bloc_pull(uintptr_t war, bool attackers, uint32_t index) {
     uint32_t enemy = war_leader(war, attackers ? 0x3C : 0x2C);
     if (enemy && country_bloc(country_at((int)enemy), other, sizeof(other)) && _stricmp(other, bloc) == 0) {
         logf("bloc %s: its members lead both sides of a war, nobody pulled in", bloc);
+        return;
+    }
+    uint32_t leader = 0;
+    int coh = bloc_cohesion_for(bloc, &leader);
+    if (coh < 20 && index != leader) {
+        logf("bloc %s: cohesion %d (fractured), only the leader's wars pull the bloc", bloc, coh);
         return;
     }
     int added = 0;
@@ -1127,6 +1134,9 @@ uint32_t __stdcall war_add_def_hook(uintptr_t war, uint32_t join, uint32_t b, ui
 }
 
 void bloc_panel_refresh();  // the BLOCURI window, if open
+void bloc_ensure_leader(const char* bloc);
+void bloc_panel_subscribe_paging();
+int bloc_cohesion_for(const char* bloc, uint32_t* leader_out);
 void bloc_map_redraw();     // the bloc map, if on
 
 bool valid_bloc_name(const char* s) {
@@ -1167,6 +1177,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_add(ConsoleResult* out, ArgVector* ar
         t.add("%s joins %s.\n", tag, name);
     }
     logf("bloc_add %s: %d countries", name, done);
+    if (done) bloc_ensure_leader(name);
     bloc_panel_refresh();
     bloc_map_redraw();
     t.add("Bloc %s: %d added. In a war every living member joins the side of the member that is in it.", name, done);
@@ -1295,13 +1306,6 @@ int bloc_names(char names[][32], int max) {
         }
     return n;
 }
-int bloc_color_index(const char* bloc) {
-    char names[64][32];
-    int n = bloc_names(names, 64);
-    for (int k = 0; k < n; ++k)
-        if (_stricmp(names[k], bloc) == 0) return k % kPal;
-    return 0;
-}
 
 uint32_t grey_of(uint32_t argb) {
     uint32_t r = (argb >> 16) & 0xFF, g = (argb >> 8) & 0xFF, b = argb & 0xFF;
@@ -1372,6 +1376,12 @@ struct NewCommand {
     const char* args[4];
 };
 
+}  // namespace
+extern "C" ConsoleResult* __cdecl cmd_bloc_identity(ConsoleResult*, ArgVector*);
+extern "C" ConsoleResult* __cdecl cmd_bloc_leader(ConsoleResult*, ArgVector*);
+extern "C" ConsoleResult* __cdecl cmd_bloc_invite(ConsoleResult*, ArgVector*);
+extern "C" ConsoleResult* __cdecl cmd_bloc_info(ConsoleResult*, ArgVector*);
+namespace {
 const NewCommand kCommands[] = {
     {"convert_pop", "convertpop",
      "Converts every pop in a province to the owner's culture and religion (or to the ones given).",
@@ -1403,6 +1413,12 @@ const NewCommand kCommands[] = {
     {"bloc_list", "bloclist", "Lists the blocs and their members.", (void*)&cmd_bloc_list, 1, {"<bloc name>"}},
     {"bloc_map", "blocmap", "Toggles the bloc map: the political map mode shows each bloc in its own colour.",
      (void*)&cmd_bloc_map, 1, {"<on|off>"}},
+    {"bloc_identity", "blocidentity", "Sets a bloc's identity: militar, comercial, imperiu or religios (each has its own monthly effect).",
+     (void*)&cmd_bloc_identity, 2, {"bloc", "identity"}},
+    {"bloc_leader", "blocleader", "Makes a member the leader of its bloc.", (void*)&cmd_bloc_leader, 1, {"tag"}},
+    {"bloc_invite", "blocinvite", "Invites a country into a bloc; the AI accepts or refuses (bloc_add forces it).",
+     (void*)&cmd_bloc_invite, 2, {"bloc", "tag"}},
+    {"bloc_info", "blocinfo", "Shows identity, leader, members and cohesion of the blocs.", (void*)&cmd_bloc_info, 1, {"<bloc>"}},
     {"bloc_disband", "blocdisband", "Removes every member of a bloc.", (void*)&cmd_bloc_disband, 1, {"bloc name"}},
     {"remove_core", "removecore", "Removes a country's core from one or more provinces.", (void*)&cmd_remove_core, 2, {"country tag", "province ids"}},
 };
@@ -1623,71 +1639,6 @@ void tb_set(void* win, const char* name, const char* text) {
     if (renderer) tcp_settext_thunk(R(VA_TEXT_SET), renderer, &v);
 }
 
-constexpr int kBlocLines = 22;
-char g_bloc_text[kBlocLines][160];
-
-void bloc_panel_fill() {
-    for (auto& l : g_bloc_text) l[0] = 0;
-    struct Entry { char bloc[32]; char tag[4]; bool alive; };
-    static Entry list[1024];
-    int n = 0;
-    for_each_tag([&](uint32_t tag, uint32_t idx) {
-        uintptr_t c = country_at((int)idx);
-        char b[64];
-        if (n < 1024 && country_bloc(c, b, sizeof(b))) {
-            snprintf(list[n].bloc, sizeof(list[n].bloc), "%s", b);
-            tag_text(tag, list[n].tag);
-            list[n].alive = country_alive(c);
-            ++n;
-        }
-    });
-    int line = 0;
-    if (!n) {
-        snprintf(g_bloc_text[0], 160, "Nu exista blocuri. Creeaza unul din consola:");
-        snprintf(g_bloc_text[1], 160, "bloc_add <nume> <TAG> [alte tag-uri]      ex: bloc_add antanta FRA ENG RUS");
-        return;
-    }
-    static bool done[1024];
-    memset(done, 0, sizeof(done));
-    for (int i = 0; i < n && line < kBlocLines; ++i) {
-        if (done[i]) continue;
-        int cnt = 0, alive = 0;
-        for (int k = i; k < n; ++k)
-            if (_stricmp(list[k].bloc, list[i].bloc) == 0) { ++cnt; alive += list[k].alive; }
-        char title[64];
-        snprintf(title, sizeof(title), "%s", list[i].bloc);
-        for (char* p = title; *p; ++p) *p = *p == '_' ? ' ' : (char)toupper((unsigned char)*p);
-        if (line > 0 && line < kBlocLines) ++line;  // blank line between blocs
-        if (line >= kBlocLines) break;
-        snprintf(g_bloc_text[line++], 160, "%s  -  %d membri (%d in viata)  -  pe harta: %s", title, cnt, alive,
-                 kBlocColorNames[bloc_color_index(list[i].bloc) % kPal]);
-        char buf[160] = "      ";
-        for (int k = i; k < n; ++k) {
-            if (done[k] || _stricmp(list[k].bloc, list[i].bloc) != 0) continue;
-            done[k] = true;
-            char item[16];
-            snprintf(item, sizeof(item), "%s%s  ", list[k].tag, list[k].alive ? "" : " (mort)");
-            if (strlen(buf) + strlen(item) > 110) {
-                if (line < kBlocLines) snprintf(g_bloc_text[line++], 160, "%s", buf);
-                snprintf(buf, sizeof(buf), "      ");
-            }
-            strncat(buf, item, sizeof(buf) - strlen(buf) - 1);
-        }
-        if (strlen(buf) > 6 && line < kBlocLines) snprintf(g_bloc_text[line++], 160, "%s", buf);
-    }
-    if (line >= kBlocLines) snprintf(g_bloc_text[kBlocLines - 1], 160, "... (lista completa: bloc_list in consola)");
-}
-void bloc_panel_refresh() {
-    if (!g_blocwin) return;
-    bloc_panel_fill();
-    tb_set(g_blocwin, "v2bloc_mapstate", g_bloc_map ? "Harta blocurilor: PORNITA (modul politic)" : "Harta blocurilor: oprita");
-    for (int i = 0; i < kBlocLines; ++i) {
-        char name[24];
-        snprintf(name, sizeof(name), "v2bloc_l%d", i);
-        tb_set(g_blocwin, name, g_bloc_text[i][0] ? g_bloc_text[i] : " ");
-    }
-}
-
 extern "C" void __cdecl tcp_on_blocs_click() {
     if (!g_blocwin) {
         g_blocwin = gui_create("v2bloc_window");
@@ -1695,6 +1646,7 @@ extern "C" void __cdecl tcp_on_blocs_click() {
         subscribe(g_blocwin, "close_button", g_bloc_close_glue, &tcp_bloc_close_thunk);
         subscribe(g_blocwin, "v2bloc_back", g_bloc_back_glue, &tcp_bloc_back_thunk);
         if (g_bloc_map_ok) subscribe(g_blocwin, "v2bloc_mapbtn", g_bloc_map_glue, &tcp_bloc_mapbtn_thunk);
+        bloc_panel_subscribe_paging();
         logf("tab: bloc window created");
     }
     bloc_panel_refresh();
@@ -1831,6 +1783,520 @@ void __fastcall topbar_hide_hook(void* self, void* edx) {
 
 bool write_ptr(uintptr_t addr, uint32_t v) { return write_code(addr, &v, 4); }
 
+
+// ================= bloc model: leader, identity, cohesion, monthly effects =================
+// Flags: "bloc_<name>" membership, "blocleader" on the leader, "blocid_<identity>" on the leader.
+// Relations: country+0xBE8[other] -> relation, value at +0x3C (x1000, -200..200). Prestige: country+0xEA0 (x1000).
+// Daily hook: the call to DayTick at 0x00683AB1 (stdcall world); monthly work when the month changes.
+// Player country index: world+0xB60.
+const char* const kIdentities[] = {"militar", "comercial", "imperiu", "religios"};
+const char* const kIdentityTitles[] = {"Tratat militar", "Liga comerciala", "Imperiu suveran", "Uniune religioasa"};
+const char* const kIdentityEffects[][2] = {
+    {"Membrii intra impreuna in razboaie. Relatiile cu liderul cresc cu 2 pe luna.",
+     "Coeziune: +5 cat timp blocul e intr-un razboi."},
+    {"Relatiile dintre toti membrii cresc cu 3 pe luna.",
+     "Coeziune: +10 daca toti membrii au relatii pozitive cu liderul."},
+    {"Liderul primeste +0.5 prestigiu pe luna pentru fiecare membru.",
+     "Coeziune: -3 pe membru in loc de -2 (imperiile mari sunt greu de tinut)."},
+    {"Lunar, in fiecare membru, un pop mic (max 3000) de alta religie trece la religia liderului.",
+     "Coeziune: +15 dupa cati membri au religia liderului."},
+};
+constexpr int kNumIdentities = 4;
+
+struct BlocInfo {
+    char name[32];
+    uint32_t members[256];
+    int n;
+    uint32_t leader;
+    int identity;
+    int cohesion;
+};
+BlocInfo g_blocs[64];
+int g_nblocs = 0;
+
+uint32_t g_member_tag[4096];  // tag chars per country index (filled by collect)
+
+int identity_of_leader(uintptr_t leader_c) {
+    int id = 0;
+    auto fn = [&](const char* name) {
+        if (_strnicmp(name, "blocid_", 7) == 0)
+            for (int k = 0; k < kNumIdentities; ++k)
+                if (_stricmp(name + 7, kIdentities[k]) == 0) id = k;
+    };
+    if (leader_c) flag_walk(rd<uintptr_t>(country_flags(leader_c) + 4), fn, 0);
+    return id;
+}
+bool has_flag(uintptr_t c, const char* f) {
+    uintptr_t e = c ? flag_find(c, f) : 0;
+    return e && rd<uint8_t>(e + 0x1C);
+}
+int prestige_of(uintptr_t c) { return c ? rd<int32_t>(c + 0xEA0) / 1000 : 0; }
+int relation(uint32_t a, uint32_t b) {
+    uintptr_t ca = country_at((int)a);
+    uintptr_t tab = ca ? rd<uintptr_t>(ca + 0xBE8) : 0;
+    uintptr_t r = tab ? rd<uintptr_t>(tab + b * 4) : 0;
+    return r ? rd<int32_t>(r + 0x3C) / 1000 : 0;
+}
+void relation_add_one(uint32_t a, uint32_t b, int delta) {
+    uintptr_t ca = country_at((int)a);
+    uintptr_t tab = ca ? rd<uintptr_t>(ca + 0xBE8) : 0;
+    uintptr_t r = tab ? rd<uintptr_t>(tab + b * 4) : 0;
+    if (!r) return;
+    int32_t v = rd<int32_t>(r + 0x3C) + delta * 1000;
+    if (v > 200000) v = 200000;
+    if (v < -200000) v = -200000;
+    *reinterpret_cast<int32_t*>(r + 0x3C) = v;
+}
+void relation_add(uint32_t a, uint32_t b, int delta) { relation_add_one(a, b, delta); relation_add_one(b, a, delta); }
+
+// Is country a in any war on the other side of country b?
+bool at_war_with(uint32_t a, uint32_t b) {
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    if (!world) return false;
+    int guard = 0;
+    for (uintptr_t node = rd<uintptr_t>(world + 0xB3C); node && guard < 2000; node = rd<uintptr_t>(node + 8), ++guard) {
+        uintptr_t war = rd<uintptr_t>(node);
+        if (!war) continue;
+        if ((war_has(war, 0x2C, a) && war_has(war, 0x3C, b)) || (war_has(war, 0x3C, a) && war_has(war, 0x2C, b))) return true;
+    }
+    return false;
+}
+bool in_any_war(uint32_t a) {
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    if (!world) return false;
+    int guard = 0;
+    for (uintptr_t node = rd<uintptr_t>(world + 0xB3C); node && guard < 2000; node = rd<uintptr_t>(node + 8), ++guard) {
+        uintptr_t war = rd<uintptr_t>(node);
+        if (war && (war_has(war, 0x2C, a) || war_has(war, 0x3C, a))) return true;
+    }
+    return false;
+}
+
+int compute_cohesion(const BlocInfo& b) {
+    if (b.n <= 1) return 50;
+    uintptr_t lc = country_at((int)b.leader);
+    double c = 50;
+    int others = 0, rel_sum = 0, same_rel = 0, positive = 0;
+    uintptr_t lrel = lc ? rd<uintptr_t>(lc + 0xE68) : 0;
+    bool any_war = false;
+    for (int i = 0; i < b.n; ++i) {
+        uint32_t m = b.members[i];
+        any_war |= in_any_war(m);
+        if (m == b.leader) continue;
+        ++others;
+        int r = relation(b.leader, m);
+        rel_sum += r;
+        positive += r > 0;
+        uintptr_t mc = country_at((int)m);
+        if (mc && lrel && rd<uintptr_t>(mc + 0xE68) == lrel) ++same_rel;
+    }
+    if (others) c += (rel_sum / (double)others) / 10.0;            // -20 .. +20
+    int per = b.identity == 2 ? 3 : 2;
+    if (b.n > 3) c -= per * (b.n - 3);
+    double rel_frac = others ? same_rel / (double)others : 1.0;
+    c += (b.identity == 3 ? 15 : 10) * rel_frac;
+    if (b.identity == 0 && any_war) c += 5;
+    if (b.identity == 1 && others && positive == others) c += 10;
+    for (int i = 0; i < b.n; ++i)
+        for (int k = i + 1; k < b.n; ++k)
+            if (at_war_with(b.members[i], b.members[k])) c -= 15;
+    if (c < 0) c = 0;
+    if (c > 100) c = 100;
+    return (int)c;
+}
+const char* cohesion_level(int c) {
+    return c < 20 ? "Fracturat" : c < 40 ? "Divizat" : c < 60 ? "Stabil" : c < 80 ? "Controlat" : "Orchestrat";
+}
+
+// Reads every bloc (sorted by name) with members, leader (flag, else highest prestige), identity, cohesion.
+int collect_blocs() {
+    char names[64][32];
+    int nb = bloc_names(names, 64);
+    for (int k = 0; k < nb; ++k) {
+        memset(&g_blocs[k], 0, sizeof(BlocInfo));
+        snprintf(g_blocs[k].name, 32, "%s", names[k]);
+    }
+    for_each_tag([&](uint32_t tag, uint32_t idx) {
+        uintptr_t c = country_at((int)idx);
+        char b[64];
+        if (!country_bloc(c, b, sizeof(b))) return;
+        if (idx < 4096) g_member_tag[idx] = tag;
+        for (int k = 0; k < nb; ++k)
+            if (_stricmp(g_blocs[k].name, b) == 0 && g_blocs[k].n < 256) {
+                BlocInfo& bi = g_blocs[k];
+                bi.members[bi.n++] = idx;
+                if (country_alive(c) && has_flag(c, "blocleader")) bi.leader = idx;
+                break;
+            }
+    });
+    for (int k = 0; k < nb; ++k) {
+        BlocInfo& bi = g_blocs[k];
+        if (!bi.leader) {  // no flag: the most prestigious living member
+            int best = -1;
+            for (int i = 0; i < bi.n; ++i) {
+                uintptr_t c = country_at((int)bi.members[i]);
+                if (country_alive(c) && prestige_of(c) > best) { best = prestige_of(c); bi.leader = bi.members[i]; }
+            }
+        }
+        bi.identity = identity_of_leader(country_at((int)bi.leader));
+        bi.cohesion = compute_cohesion(bi);
+    }
+    g_nblocs = nb;
+    return nb;
+}
+BlocInfo* find_bloc(const char* name) {
+    for (int k = 0; k < g_nblocs; ++k)
+        if (_stricmp(g_blocs[k].name, name) == 0) return &g_blocs[k];
+    return nullptr;
+}
+int bloc_cohesion_for(const char* bloc, uint32_t* leader_out) {
+    collect_blocs();
+    BlocInfo* b = find_bloc(bloc);
+    if (leader_out) *leader_out = b ? b->leader : 0;
+    return b ? b->cohesion : 50;
+}
+void set_leader(BlocInfo& b, uint32_t idx) {
+    for (int i = 0; i < b.n; ++i) flag_set(country_at((int)b.members[i]), "blocleader", false);
+    int id = b.identity;
+    // identity lives on the leader: move it
+    for (int i = 0; i < b.n; ++i)
+        for (int k = 0; k < kNumIdentities; ++k) {
+            char f[32];
+            snprintf(f, sizeof(f), "blocid_%s", kIdentities[k]);
+            if (has_flag(country_at((int)b.members[i]), f)) flag_set(country_at((int)b.members[i]), f, false);
+        }
+    uintptr_t c = country_at((int)idx);
+    flag_set(c, "blocleader", true);
+    char f[32];
+    snprintf(f, sizeof(f), "blocid_%s", kIdentities[id]);
+    flag_set(c, f, true);
+    b.leader = idx;
+}
+void bloc_ensure_leader(const char* bloc) {
+    collect_blocs();
+    BlocInfo* b = find_bloc(bloc);
+    if (b && b->leader && !has_flag(country_at((int)b->leader), "blocleader")) set_leader(*b, b->leader);
+}
+const char* tag_of(uint32_t idx, char* buf) {
+    uint32_t t = idx < 4096 ? g_member_tag[idx] : 0;
+    if (!t) {
+        for_each_tag([&](uint32_t tag, uint32_t i) { if (i == idx) t = tag; });
+    }
+    return tag_text(t, buf);
+}
+
+uint32_t g_rng = 0x1234567;
+uint32_t rnd() { g_rng = g_rng * 1103515245u + 12345u + GetTickCount(); return (g_rng >> 8) & 0xFFFFFF; }
+
+void bloc_monthly() {
+    collect_blocs();
+    for (int k = 0; k < g_nblocs; ++k) {
+        BlocInfo& b = g_blocs[k];
+        if (!b.leader || b.n < 2) continue;
+        uintptr_t lc = country_at((int)b.leader);
+        if (!b.leader || !country_alive(lc)) continue;
+        if (!has_flag(lc, "blocleader")) set_leader(b, b.leader);
+        int converted = 0;
+        for (int i = 0; i < b.n; ++i) {
+            uint32_t m = b.members[i];
+            if (m == b.leader || !country_alive(country_at((int)m))) continue;
+            switch (b.identity) {
+                case 0: relation_add(b.leader, m, 2); break;
+                case 1:
+                    for (int j = i + 1; j < b.n; ++j)
+                        if (country_alive(country_at((int)b.members[j]))) relation_add(m, b.members[j], 3);
+                    if (i == 0 || b.members[0] == b.leader) {}
+                    break;
+                case 2: relation_add(b.leader, m, 1); break;
+                case 3: {
+                    relation_add(b.leader, m, 2);
+                    uintptr_t lrel = rd<uintptr_t>(lc + 0xE68);
+                    static uintptr_t provs[2048];
+                    int np = owned_provinces((int)m, provs, 2048);
+                    uintptr_t best = 0;
+                    uint32_t best_size = 3001;
+                    for (int p = 0; p < np; ++p)
+                        for_each_pop(provs[p], [&](uintptr_t pop, int) {
+                            uint32_t sz = rd<uint32_t>(pop + 0x58);
+                            if (pop_alive(pop) && rd<uintptr_t>(pop + 0x70) != lrel && sz < best_size) { best = pop; best_size = sz; }
+                        });
+                    if (best && lrel) { *reinterpret_cast<uintptr_t*>(best + 0x70) = lrel; ++converted; }
+                    break;
+                }
+            }
+        }
+        if (b.identity == 1) {  // the leader with everyone too
+            for (int i = 0; i < b.n; ++i)
+                if (b.members[i] != b.leader) relation_add(b.leader, b.members[i], 3);
+        }
+        if (b.identity == 2) *reinterpret_cast<int32_t*>(lc + 0xEA0) += 500 * (b.n - 1);
+        logf("bloc %s (%s): monthly effects, cohesion %d%s", b.name, kIdentities[b.identity], b.cohesion,
+             converted ? ", pops converted" : "");
+    }
+}
+
+// ---- daily hook (call to DayTick at 0x00683AB1) ----
+constexpr uintptr_t VA_DAYTICK_CALL = 0x00683AB1, VA_DAYTICK = 0x006859C0, VA_MONTH_LEN = 0x00F1027C;
+uintptr_t g_daytick_target = 0;
+int g_last_month = -1;
+int current_month() {
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    if (!world) return -1;
+    uint32_t date = rd<uint32_t>(world + 0xB0C);
+    if (date < 0x029C55C0u) return -1;
+    uint32_t days = (date - 0x029C55C0u) / 24;
+    uint32_t doy = days % 365;
+    const int32_t* len = reinterpret_cast<const int32_t*>(R(VA_MONTH_LEN));
+    int sum = 0;
+    for (int m = 0; m < 12; ++m) sum += len[m];
+    if (sum != 365) return (int)(doy / 30);
+    for (int m = 0; m < 12; ++m) {
+        if (doy < (uint32_t)len[m]) return m;
+        doy -= len[m];
+    }
+    return 11;
+}
+void __stdcall daytick_hook(uintptr_t world) {
+    reinterpret_cast<void(__stdcall*)(uintptr_t)>(g_daytick_target)(world);
+    int m = current_month();
+    if (m >= 0 && g_last_month >= 0 && m != g_last_month) bloc_monthly();
+    if (m != g_last_month) {
+        g_last_month = m;
+        if (g_blocwin && win_visible(g_blocwin)) bloc_panel_refresh();
+    }
+}
+
+// ---- commands ----
+int identity_from(const char* s) {
+    for (int k = 0; k < kNumIdentities; ++k)
+        if (_stricmp(s, kIdentities[k]) == 0) return k;
+    if (_strnicmp(s, "mil", 3) == 0) return 0;
+    if (_strnicmp(s, "com", 3) == 0 || _strnicmp(s, "trade", 5) == 0) return 1;
+    if (_strnicmp(s, "imp", 3) == 0) return 2;
+    if (_strnicmp(s, "rel", 3) == 0) return 3;
+    return -1;
+}
+extern "C" ConsoleResult* __cdecl cmd_bloc_identity(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 2) return reply(out, false, "Usage: bloc_identity <bloc> <militar|comercial|imperiu|religios>");
+    collect_blocs();
+    BlocInfo* b = find_bloc(arg_text(args, 0));
+    if (!b) return reply(out, false, "No bloc called %s.", arg_text(args, 0));
+    int id = identity_from(arg_text(args, 1));
+    if (id < 0) return reply(out, false, "Identity: militar, comercial, imperiu or religios.");
+    b->identity = id;
+    set_leader(*b, b->leader);
+    bloc_panel_refresh();
+    return reply(out, true, "Bloc %s is now: %s. %s", b->name, kIdentityTitles[id], kIdentityEffects[id][0]);
+}
+extern "C" ConsoleResult* __cdecl cmd_bloc_leader(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 1) return reply(out, false, "Usage: bloc_leader <TAG>  (the country must be in a bloc)");
+    int ci = country_index(arg_text(args, 0));
+    if (ci < 0) return reply(out, false, "Unknown country %s.", arg_text(args, 0));
+    char b[64];
+    if (!country_bloc(country_at(ci), b, sizeof(b))) return reply(out, false, "%s is in no bloc.", arg_text(args, 0));
+    collect_blocs();
+    BlocInfo* bi = find_bloc(b);
+    if (!bi) return reply(out, false, "Bloc not found.");
+    set_leader(*bi, (uint32_t)ci);
+    bloc_panel_refresh();
+    return reply(out, true, "%s now leads %s.", arg_text(args, 0), b);
+}
+extern "C" ConsoleResult* __cdecl cmd_bloc_invite(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 2) return reply(out, false, "Usage: bloc_invite <bloc> <TAG>  (the AI decides; bloc_add forces it)");
+    collect_blocs();
+    BlocInfo* b = find_bloc(arg_text(args, 0));
+    if (!b) return reply(out, false, "No bloc called %s.", arg_text(args, 0));
+    const char* tag = arg_text(args, 1);
+    int ci = country_index(tag);
+    if (ci < 0) return reply(out, false, "Unknown country %s.", tag);
+    uintptr_t c = country_at(ci);
+    char cur[64];
+    if (!country_alive(c)) return reply(out, false, "%s does not exist on the map.", tag);
+    if (country_bloc(c, cur, sizeof(cur))) return reply(out, false, "%s is already in bloc %s.", tag, cur);
+    for (int i = 0; i < b->n; ++i)
+        if (at_war_with((uint32_t)ci, b->members[i])) return reply(out, false, "%s refuses: it is at war with a member of %s.", tag, b->name);
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    bool player = world && rd<uint32_t>(world + 0xB60) == (uint32_t)ci;
+    int rel = relation(b->leader, (uint32_t)ci);
+    uintptr_t lc = country_at((int)b->leader);
+    bool same_religion = lc && rd<uintptr_t>(lc + 0xE68) == rd<uintptr_t>(c + 0xE68);
+    int chance = 40 + rel / 5 + (same_religion ? 15 : 0) - 3 * b->n + (prestige_of(c) < prestige_of(lc) ? 10 : -10) + (b->cohesion - 50) / 5;
+    if (chance < 5) chance = 5;
+    if (chance > 95) chance = 95;
+    bool yes = player || (int)(rnd() % 100) < chance;
+    if (yes) {
+        char flag[40];
+        snprintf(flag, sizeof(flag), "bloc_%s", b->name);
+        flag_set(c, flag, true);
+        relation_add(b->leader, (uint32_t)ci, 10);
+        bloc_panel_refresh();
+        bloc_map_redraw();
+    } else {
+        relation_add(b->leader, (uint32_t)ci, -5);
+    }
+    logf("bloc_invite %s %s: chance %d%%, %s", b->name, tag, chance, yes ? "accepted" : "refused");
+    return reply(out, yes, yes ? "%s accepted to join %s (chance was %d%%)." : "%s refused to join %s (chance was %d%%; relations -5).",
+                 tag, b->name, chance);
+}
+extern "C" ConsoleResult* __cdecl cmd_bloc_info(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    collect_blocs();
+    if (!g_nblocs) return reply(out, false, "No blocs.");
+    Text t;
+    char tb[4];
+    for (int k = 0; k < g_nblocs; ++k) {
+        BlocInfo& b = g_blocs[k];
+        if (arg_count(args) >= 1 && _stricmp(arg_text(args, 0), b.name) != 0) continue;
+        t.add("%s: %s, leader %s, %d members, cohesion %d (%s)\n", b.name, kIdentityTitles[b.identity], tag_of(b.leader, tb), b.n,
+              b.cohesion, cohesion_level(b.cohesion));
+    }
+    return finish(out, true, t);
+}
+
+// ---- the bloc panel: one bloc per page (Victoria 3 style) ----
+constexpr int kRows = 16;
+int g_bloc_page = 0;
+}  // namespace
+extern "C" void tcp_bloc_prev_thunk();
+extern "C" void tcp_bloc_next_thunk();
+namespace {
+uint64_t country_population(uint32_t idx) {
+    static uintptr_t provs[2048];
+    int np = owned_provinces((int)idx, provs, 2048);
+    uint64_t sum = 0;
+    for (int p = 0; p < np; ++p)
+        for_each_pop(provs[p], [&](uintptr_t pop, int) { if (pop_alive(pop)) sum += rd<uint32_t>(pop + 0x58); });
+    return sum;
+}
+int country_province_count(uint32_t idx) {
+    uintptr_t c = country_at((int)idx);
+    return c ? (int)((rd<uintptr_t>(c + 0x9DC) - rd<uintptr_t>(c + 0x9D8)) / 4) : 0;
+}
+void fmt_people(uint64_t n, char* out, size_t sz) {
+    if (n >= 1000000) snprintf(out, sz, "%.2f mil.", n / 1e6);
+    else if (n >= 1000) snprintf(out, sz, "%.0f mii", n / 1e3);
+    else snprintf(out, sz, "%llu", (unsigned long long)n);
+}
+void bloc_panel_refresh() {
+    if (!g_blocwin) return;
+    collect_blocs();
+    tb_set(g_blocwin, "v2bloc_mapstate", g_bloc_map ? "Harta blocurilor: PORNITA (modul politic)" : "Harta blocurilor: oprita");
+    auto row = [&](int r, const char* a, const char* b, const char* c, const char* d, const char* e) {
+        char n[24];
+        const char* v[5] = {a, b, c, d, e};
+        for (int col = 0; col < 5; ++col) {
+            snprintf(n, sizeof(n), "v2bloc_r%dc%d", r, col);
+            tb_set(g_blocwin, n, v[col] && v[col][0] ? v[col] : " ");
+        }
+    };
+    if (!g_nblocs) {
+        tb_set(g_blocwin, "v2bloc_header", "Blocuri");
+        tb_set(g_blocwin, "v2bloc_info1", "Nu exista inca niciun bloc.");
+        tb_set(g_blocwin, "v2bloc_info2", "Creeaza unul din consola:  bloc_add <nume> <TAG> [alte tag-uri]");
+        tb_set(g_blocwin, "v2bloc_bar", "ex: bloc_add antanta FRA ENG RUS     apoi  bloc_identity antanta militar");
+        tb_set(g_blocwin, "v2bloc_eff1", " ");
+        tb_set(g_blocwin, "v2bloc_eff2", " ");
+        tb_set(g_blocwin, "v2bloc_page", " ");
+        for (int r = 0; r <= kRows; ++r) row(r, "", "", "", "", "");
+        return;
+    }
+    if (g_bloc_page >= g_nblocs) g_bloc_page = 0;
+    if (g_bloc_page < 0) g_bloc_page = g_nblocs - 1;
+    BlocInfo& b = g_blocs[g_bloc_page];
+    char title[64], buf[200], tb[4];
+    snprintf(title, sizeof(title), "%s", b.name);
+    for (char* q = title; *q; ++q) *q = *q == '_' ? ' ' : (char)toupper((unsigned char)*q);
+    tb_set(g_blocwin, "v2bloc_header", title);
+    snprintf(buf, sizeof(buf), "%s   -   Lider: %s   -   %d membri   -   culoare pe harta: %s", kIdentityTitles[b.identity],
+             tag_of(b.leader, tb), b.n, kBlocColorNames[g_bloc_page % kPal]);
+    tb_set(g_blocwin, "v2bloc_info1", buf);
+    snprintf(buf, sizeof(buf), "Coeziune: %d / 100  -  %s%s", b.cohesion, cohesion_level(b.cohesion),
+             b.cohesion < 20 ? "  (doar razboaiele liderului mai trag blocul)" : "");
+    tb_set(g_blocwin, "v2bloc_info2", buf);
+    char bar[64];
+    int fill = b.cohesion / 2;
+    for (int i = 0; i < 50; ++i) bar[i] = i < fill ? '|' : '.';
+    bar[50] = 0;
+    tb_set(g_blocwin, "v2bloc_bar", bar);
+    tb_set(g_blocwin, "v2bloc_eff1", kIdentityEffects[b.identity][0]);
+    tb_set(g_blocwin, "v2bloc_eff2", kIdentityEffects[b.identity][1]);
+    snprintf(buf, sizeof(buf), "Bloc %d / %d", g_bloc_page + 1, g_nblocs);
+    tb_set(g_blocwin, "v2bloc_page", buf);
+    row(0, "Tara", "Populatie", "Prestigiu", "Provincii", "Relatii cu liderul");
+    // leader first, then by prestige
+    uint32_t order[256];
+    int n = 0;
+    order[n++] = b.leader;
+    for (int i = 0; i < b.n; ++i)
+        if (b.members[i] != b.leader) order[n++] = b.members[i];
+    for (int i = 2; i < n; ++i)
+        for (int k = i; k > 1 && prestige_of(country_at((int)order[k])) > prestige_of(country_at((int)order[k - 1])); --k) {
+            uint32_t t = order[k]; order[k] = order[k - 1]; order[k - 1] = t;
+        }
+    for (int r = 1; r <= kRows; ++r) {
+        int i = r - 1;
+        if (i >= n || (r == kRows && n > kRows)) {
+            if (r == kRows && n > kRows) { snprintf(buf, sizeof(buf), "... inca %d (bloc_list %s)", n - kRows + 1, b.name); row(r, buf, "", "", "", ""); }
+            else row(r, "", "", "", "", "");
+            continue;
+        }
+        uint32_t m = order[i];
+        uintptr_t c = country_at((int)m);
+        char name[32], pop[32], pres[16], provs[16], rel[24];
+        snprintf(name, sizeof(name), "%s%s%s", tag_of(m, tb), m == b.leader ? "  (lider)" : "", country_alive(c) ? "" : "  (anexata)");
+        fmt_people(country_population(m), pop, sizeof(pop));
+        snprintf(pres, sizeof(pres), "%d", prestige_of(c));
+        snprintf(provs, sizeof(provs), "%d", country_province_count(m));
+        if (m == b.leader) snprintf(rel, sizeof(rel), "-");
+        else snprintf(rel, sizeof(rel), "%+d", relation(b.leader, m));
+        row(r, name, pop, pres, provs, rel);
+    }
+}
+extern "C" void __cdecl tcp_on_bloc_prev() { --g_bloc_page; bloc_panel_refresh(); }
+extern "C" void __cdecl tcp_on_bloc_next() { ++g_bloc_page; bloc_panel_refresh(); }
+asm(R"(
+    .text
+    .globl _tcp_bloc_prev_thunk
+_tcp_bloc_prev_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_bloc_prev
+    popfl
+    popal
+    ret
+    .globl _tcp_bloc_next_thunk
+_tcp_bloc_next_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_bloc_next
+    popfl
+    popal
+    ret
+)");
+alignas(8) uint8_t g_bloc_prev_glue[kGlueSize], g_bloc_next_glue[kGlueSize];
+void bloc_panel_subscribe_paging() {
+    subscribe(g_blocwin, "v2bloc_prev", g_bloc_prev_glue, &tcp_bloc_prev_thunk);
+    subscribe(g_blocwin, "v2bloc_next", g_bloc_next_glue, &tcp_bloc_next_thunk);
+}
+
+void install_bloc_tick() {
+    uintptr_t site = R(VA_DAYTICK_CALL);
+    if (*(uint8_t*)site != 0xE8) { logf("bloc tick: call at 0x683AB1 not found; monthly bloc effects off"); return; }
+    g_daytick_target = site + 5 + *(int32_t*)(site + 1);
+    if (g_daytick_target != R(VA_DAYTICK)) logf("bloc tick: DayTick call already redirected by another DLL, chaining it");
+    int32_t rel = (int32_t)((uintptr_t)&daytick_hook - (site + 5));
+    logf(write_code(site + 1, &rel, 4) ? "bloc tick: monthly bloc effects installed" : "bloc tick: VirtualProtect failed");
+}
+
 void install_topbar_tab() {
     if (!g_tab_enabled) { logf("tab: disabled (topbar_tab=0)"); return; }
     const uintptr_t call = R(VA_TOPBAR_BUILD_CALL), vt = R(VA_TOPBAR_VT);
@@ -1912,7 +2378,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-24c (blocs + panel + bloc map)");
+    logf("TGC Convert Pop build 2026-10-25 (power blocs: leader, identity, cohesion)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
@@ -1929,6 +2395,7 @@ extern "C" __declspec(dllexport) int TGL_PluginInit(const TGL_HostApi* host) {
     install_topbar_tab();
     install_blocs();
     if (g_blocs_ok) install_bloc_map();
+    if (g_blocs_ok) install_bloc_tick();
     return install_commands() ? 0 : 2;
 }
 

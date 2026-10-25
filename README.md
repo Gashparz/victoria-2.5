@@ -28,6 +28,8 @@ Open the console with `~`. Province ids come from the built-in `showprovinceid` 
 | `remove_core <TAG> <prov> [more]` | Removes it |
 | `bloc_add <name> <TAGs>` | Puts countries into a **bloc** (mega alliance): when a member enters a war, every other living member joins the same side |
 | `bloc_remove <TAGs>`, `bloc_list [name]`, `bloc_disband <name>` | Manage blocs |
+| `bloc_invite <bloc> <TAG>` | Invites a country; the AI accepts or refuses |
+| `bloc_identity <bloc> <militar\|comercial\|imperiu\|religios>`, `bloc_leader <TAG>`, `bloc_info` | Identity, leader and overview (cohesion) |
 | `bloc_map [on\|off]` | Bloc map: the political map mode colours each bloc (others grey) |
 
 A **filter** can be a culture (`polish`), a religion (`catholic`), a pop type (`farmers`) or a pop id taken from the list commands.
@@ -56,6 +58,17 @@ When the game adds a member to a war side, the plugin adds every other living me
 - Crisis and rebel wars, and loading a save, are left alone.
 
 The **Blocuri** button in the COMENZI window opens a panel that lists every bloc and its members. The panel updates as you change blocs.
+
+**Power blocs (inspired by Victoria 3):**
+
+- **Leader and identity.** Each bloc has a leader and one of four identities, each with a monthly effect:
+  - Military treaty: relations with the leader +2.
+  - Trade league: relations between all members +3.
+  - Sovereign empire: the leader gains prestige for every member.
+  - Religious union: in every member, one small pop converts to the leader's religion.
+- **Cohesion.** It runs from 0 to 100 and comes from relations with the leader, bloc size, shared religion and members fighting each other. Below 20 (fractured), only the leader's wars pull the bloc in.
+- **Invitations.** `bloc_invite` lets the AI decide, while `bloc_add` forces a country in.
+- **Panel.** The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects and a members table with population, prestige, provinces and relations.
 
 **Bloc map:** `bloc_map` or the **Harta on/off** button in the panel switches the political map mode to bloc colours. Owner and occupier both show their bloc colour, and countries outside a bloc turn grey.
 
