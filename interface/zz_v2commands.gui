@@ -331,7 +331,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "Click a province, press 'Treaty: ...' next to the province window to offer it or ask for it, then open Treaties."
+			text = "Treaties window: 'Pick on map' adds every province you click; '+ My people' / '+ Their people' add whole regions."
 			format = left
 			fixedsize = yes
 		}
@@ -1513,8 +1513,8 @@ guiTypes = {
 	windowType = {
 		name = "v2treaty_window"
 		backGround = "Background"
-		position = { x = -360 y = -291 }
-		size = { x = 720 y = 582 }
+		position = { x = -360 y = -309 }
+		size = { x = 720 y = 618 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -1820,18 +1820,37 @@ guiTypes = {
 			fixedsize = yes
 		}
 		guiButtonType = {
-			name = "v2tr_prov"
+			name = "v2tr_pick"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 30 y = 526 }
-			buttonText = "Propose exchange"
+			buttonText = " "
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		instantTextBoxType = {
+			name = "v2tr_pick_text"
+			position = { x = 34 y = 534 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 136
+			maxHeight = 18
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2tr_mine"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 196 y = 526 }
+			buttonText = "+ My people"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
 		guiButtonType = {
-			name = "v2tr_pop"
+			name = "v2tr_theirs"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 200 y = 526 }
-			buttonText = "Population swap"
+			position = { x = 362 y = 526 }
+			buttonText = "+ Their people"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
@@ -1840,6 +1859,41 @@ guiTypes = {
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 546 y = 526 }
 			buttonText = "Clear"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		guiButtonType = {
+			name = "v2tr_prov"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 30 y = 562 }
+			buttonText = "Propose exchange"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		guiButtonType = {
+			name = "v2tr_popopt"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 362 y = 562 }
+			buttonText = " "
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		instantTextBoxType = {
+			name = "v2tr_popopt_text"
+			position = { x = 366 y = 570 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 136
+			maxHeight = 18
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2tr_pop"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 546 y = 562 }
+			buttonText = "Population swap"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}

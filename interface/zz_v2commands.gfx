@@ -8,7 +8,7 @@ spriteTypes = {
 	}
 	corneredTileSpriteType = {
 		name = "GFX_v2treaty_bg"
-		size = { x = 720 y = 582 }
+		size = { x = 720 y = 618 }
 		textureFile = "gfx\\interface\\tiles_dialog_type2.tga"
 		borderSize = { x = 94 y = 94 }
 	}

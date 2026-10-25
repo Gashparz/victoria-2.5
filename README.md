@@ -94,6 +94,17 @@ The treaty window lists the AI's chance and the reasons behind it:
   - It weighs the net population and whether the minority sent away has another faith.
   - It also weighs the minority's size, relations and shared bloc.
 
+Building a treaty in the window:
+
+- **Pick on map** adds or removes every province you click.
+- **+ My people** asks for all their provinces where your nation is the majority.
+- **+ Their people** offers all of yours where theirs is.
+- The population option button cycles through:
+  - *both ways*;
+  - *send theirs home*;
+  - *bring yours home*;
+  - *one culture only* (e.g. only the French).
+
 Refusals cost relations. With `yesmen` on, the AI always accepts. Provinces change hands through the game's own `secede_province` effect.
 
 ### Top bar tab

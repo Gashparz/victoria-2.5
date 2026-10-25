@@ -28,7 +28,7 @@ lines = [
  (L, "Click a country on the map: an 'Invite ... to bloc' button appears next to the province window (leader only)."),
  None,
  (H_, "TREATIES"),
- (L, "Click a province, press 'Treaty: ...' next to the province window to offer it or ask for it, then open Treaties."),
+ (L, "Treaties window: 'Pick on map' adds every province you click; '+ My people' / '+ Their people' add whole regions."),
  (L, "treaty <TAG> [give <ids>] [take <ids>]     treaty_propose     treaty_population [TAG]   (each side gets its own people)"),
  None,
  (L, "Log: the_grand_loader.log next to v2game.exe. Population totals refresh on the next game day."),
@@ -309,7 +309,7 @@ add('''	}
 	}
 ''')
 TL = 24
-TH = 60 + TL * 18 + 90
+TH = 60 + TL * 18 + 126
 add(f'''
 	# Treaty window (filled by TGCConvertPop.dll)
 	windowType = {{
@@ -341,9 +341,17 @@ for i in range(TL):
     add(tbox(f"v2tr_l{i}", 30, 56 + i * 18, "Arial12", W - 60, 18))
 yb = 56 + TL * 18 + 8
 add(tbox("v2tr_status", 30, yb, "vic_18", W - 60, 22))
-add(button("v2tr_prov", "GFX_button_standard_144", 30, yb + 30, "Propose exchange"))
-add(button("v2tr_pop", "GFX_button_standard_144", 200, yb + 30, "Population swap"))
+# row 1: building the treaty
+add(button("v2tr_pick", "GFX_button_standard_144", 30, yb + 30, " "))
+add(tbox("v2tr_pick_text", 34, yb + 38, "Arial12", 136, 18, "centre"))
+add(button("v2tr_mine", "GFX_button_standard_144", 196, yb + 30, "+ My people"))
+add(button("v2tr_theirs", "GFX_button_standard_144", 362, yb + 30, "+ Their people"))
 add(button("v2tr_clear", "GFX_button_standard_144", W - 30 - 144, yb + 30, "Clear"))
+# row 2: proposing
+add(button("v2tr_prov", "GFX_button_standard_144", 30, yb + 66, "Propose exchange"))
+add(button("v2tr_popopt", "GFX_button_standard_144", 362, yb + 66, " "))
+add(tbox("v2tr_popopt_text", 366, yb + 74, "Arial12", 136, 18, "centre"))
+add(button("v2tr_pop", "GFX_button_standard_144", W - 30 - 144, yb + 66, "Population swap"))
 add('\t}\n}\n')
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))
 open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r\n').write(f'''spriteTypes = {{
@@ -356,7 +364,7 @@ open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r
 	}}
 	corneredTileSpriteType = {{
 		name = "GFX_v2treaty_bg"
-		size = {{ x = {W} y = {60 + 24 * 18 + 90} }}
+		size = {{ x = {W} y = {60 + 24 * 18 + 126} }}
 		textureFile = "gfx\\\\interface\\\\tiles_dialog_type2.tga"
 		borderSize = {{ x = 94 y = 94 }}
 	}}

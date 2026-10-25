@@ -71,6 +71,10 @@ Treaties (province exchange, population exchange)
     population exchange  each side gets its own nationals (primary + accepted cultures) from the other,
                          like Greece and Turkey in 1923: net population, minority of another faith,
                          size of the minority, relations, same bloc.
+  Building a treaty: "Pick on map" in the treaty window adds (or removes) every province you click;
+        "+ My people" asks for all their provinces where your nation is the majority, "+ Their people"
+        offers all yours where theirs is. The population option button cycles: both ways, send theirs home,
+        bring yours home, or one culture only (e.g. only french).
   Refusals cost relations (-10 / -5); with the yesmen cheat on, the AI always accepts.
   Console: treaty <TAG> [give <ids>] [take <ids>], treaty_propose, treaty_population [TAG]
 

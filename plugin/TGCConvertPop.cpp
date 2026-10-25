@@ -2544,7 +2544,12 @@ void install_diplo_button() {
 // Country capital province id: country+0xBE4.
 constexpr uintptr_t VA_SECEDE_EXEC = 0x00887420;
 uint32_t g_tr_partner = 0;
-uint32_t g_tr_give[24], g_tr_take[24];
+constexpr int kTrMax = 300;
+uint32_t g_tr_give[kTrMax], g_tr_take[kTrMax];
+bool g_tr_pick = false;
+int g_tr_popopt = 0;  // 0 both ways, 1 only theirs go home, 2 only yours come home, 3+ one culture
+uintptr_t g_tr_popcult[64];
+int g_tr_npopcult = 0;
 int g_tr_ngive = 0, g_tr_ntake = 0;
 char g_tr_status[240] = "";
 void* g_treatywin = nullptr;
@@ -2556,10 +2561,15 @@ extern "C" void tcp_tr_prov_thunk();
 extern "C" void tcp_tr_pop_thunk();
 extern "C" void tcp_tr_clear_thunk();
 extern "C" void tcp_tr_open_thunk();
+extern "C" void tcp_tr_pick_thunk();
+extern "C" void tcp_tr_mine_thunk();
+extern "C" void tcp_tr_theirs_thunk();
+extern "C" void tcp_tr_popopt_thunk();
 extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVector* args);
 namespace {
 alignas(8) uint8_t g_tr_add_glue[kGlueSize], g_tr_close_glue[kGlueSize], g_tr_prov_glue[kGlueSize], g_tr_pop_glue[kGlueSize],
-    g_tr_clear_glue[kGlueSize], g_tr_open_glue[kGlueSize];
+    g_tr_clear_glue[kGlueSize], g_tr_open_glue[kGlueSize], g_tr_pick_glue[kGlueSize], g_tr_mine_glue[kGlueSize],
+    g_tr_theirs_glue[kGlueSize], g_tr_popopt_glue[kGlueSize];
 
 uint32_t ctag_lo(uint32_t idx) {
     uint32_t lo = 0;
@@ -2680,19 +2690,49 @@ struct PopEval {
     Eval e;
     uint64_t they_get, they_lose;
 };
+// Candidate cultures for the "one culture" options: their nationals living with you, yours living with them.
+void popcult_refresh(uint32_t me, uint32_t ai) {
+    g_tr_npopcult = 0;
+    uintptr_t cm = country_at((int)me), ca = country_at((int)ai);
+    if (!ca) return;
+    static uintptr_t provs[2048];
+    auto scan = [&](uint32_t owner, uintptr_t nation) {
+        int np = owned_provinces((int)owner, provs, 2048);
+        for (int i = 0; i < np; ++i)
+            for_each_pop(provs[i], [&](uintptr_t pop, int) {
+                uintptr_t c = rd<uintptr_t>(pop + 0x6C);
+                if (!pop_alive(pop) || !national_culture(nation, c)) return;
+                for (int k = 0; k < g_tr_npopcult; ++k)
+                    if (g_tr_popcult[k] == c) return;
+                if (g_tr_npopcult < 64) g_tr_popcult[g_tr_npopcult++] = c;
+            });
+    };
+    scan(me, ca);
+    scan(ai, cm);
+}
+uintptr_t popopt_culture() { return g_tr_popopt >= 3 && g_tr_popopt - 3 < g_tr_npopcult ? g_tr_popcult[g_tr_popopt - 3] : 0; }
+void popopt_label(char* out, size_t n) {
+    uintptr_t c = popopt_culture();
+    if (c) snprintf(out, n, "Only %s", culture_name(c));
+    else snprintf(out, n, "%s", g_tr_popopt == 1 ? "Send theirs home" : g_tr_popopt == 2 ? "Bring yours home" : "Both ways");
+}
 PopEval eval_population(uint32_t me, uint32_t ai) {
     PopEval r{};
     Eval& e = r.e;
     uintptr_t cm = country_at((int)me), ca = country_at((int)ai);
     if (!ai || !country_alive(ca)) { e.add(0, "No treaty partner."); return r; }
     if (at_war_with(me, ai)) { e.add(0, "You are at war: make peace first."); return r; }
+    uintptr_t only = popopt_culture();
+    bool to_them = g_tr_popopt != 2 && (!only || national_culture(ca, only));
+    bool to_you = g_tr_popopt != 1 && (!only || national_culture(cm, only));
     static uintptr_t provs[2048];
     uint64_t foreign_faith = 0, ai_total = 0;
     uintptr_t ai_rel = rd<uintptr_t>(ca + 0xE68);
     int np = owned_provinces((int)me, provs, 2048);
-    for (int i = 0; i < np; ++i)
+    for (int i = 0; i < np && to_them; ++i)
         for_each_pop(provs[i], [&](uintptr_t pop, int) {
-            if (pop_alive(pop) && national_culture(ca, rd<uintptr_t>(pop + 0x6C))) r.they_get += rd<uint32_t>(pop + 0x58);
+            uintptr_t c = rd<uintptr_t>(pop + 0x6C);
+            if (pop_alive(pop) && (only ? c == only : national_culture(ca, c))) r.they_get += rd<uint32_t>(pop + 0x58);
         });
     np = owned_provinces((int)ai, provs, 2048);
     for (int i = 0; i < np; ++i)
@@ -2700,12 +2740,13 @@ PopEval eval_population(uint32_t me, uint32_t ai) {
             if (!pop_alive(pop)) return;
             uint32_t sz = rd<uint32_t>(pop + 0x58);
             ai_total += sz;
-            if (national_culture(cm, rd<uintptr_t>(pop + 0x6C))) {
+            uintptr_t c = rd<uintptr_t>(pop + 0x6C);
+            if (to_you && (only ? c == only : national_culture(cm, c))) {
                 r.they_lose += sz;
                 if (rd<uintptr_t>(pop + 0x70) != ai_rel) foreign_faith += sz;
             }
         });
-    if (!r.they_get && !r.they_lose) { e.add(0, "Neither side has a minority of the other's nation."); return r; }
+    if (!r.they_get && !r.they_lose) { e.add(0, "Nobody to move with this option."); return r; }
     e.possible = true;
     int c = 30;
     e.add(0, "base 30");
@@ -2716,6 +2757,7 @@ PopEval eval_population(uint32_t me, uint32_t ai) {
     int faith = r.they_lose ? (int)(20.0 * foreign_faith / r.they_lose) : 0;
     if (faith) { c += faith; e.add(faith, "the minority they send away has another faith"); }
     if (ai_total && r.they_lose * 20 >= ai_total) { c += 10; e.add(10, "the minority is large (5%% or more of them)"); }
+    if (ai_total && r.they_get * 20 >= ai_total) { c -= 10; e.add(-10, "too many refugees to settle at once"); }
     int rel = relation(ai, me) / 10;
     if (rel) { c += rel; e.add(rel, "relations"); }
     const char* bm = cached_bloc(me);
@@ -2741,7 +2783,7 @@ bool transfer_province(uint32_t prov_id, uint32_t to_idx) {
     return rd<uint32_t>(p + 0x12C) == to_idx;
 }
 
-void run_migrate_all(uint32_t from, uint32_t to) {
+void run_migrate_all(uint32_t from, uint32_t to, const char* what = "accepted") {
     char a[4], b[4];
     tag3(from, a);
     tag3(to, b);
@@ -2749,14 +2791,14 @@ void run_migrate_all(uint32_t from, uint32_t to) {
     memset(toks, 0, sizeof(toks));
     gs_view(reinterpret_cast<GameString*>(toks[0]), a, 3);
     gs_view(reinterpret_cast<GameString*>(toks[1]), b, 3);
-    gs_view(reinterpret_cast<GameString*>(toks[2]), "accepted", 8);
+    gs_view(reinterpret_cast<GameString*>(toks[2]), what, strlen(what));
     ArgVector av{toks[0], toks[0] + 3 * kTokenSize, toks[0] + 3 * kTokenSize};
     ConsoleResult res;
     cmd_migrate_all_pops(&res, &av);
 }
 
 void treaty_panel_refresh();
-void treaty_clear() { g_tr_partner = 0; g_tr_ngive = g_tr_ntake = 0; }
+void treaty_clear() { g_tr_partner = 0; g_tr_ngive = g_tr_ntake = 0; g_tr_popopt = 0; g_tr_npopcult = 0; }
 bool in_list(uint32_t* l, int n, uint32_t v) { for (int i = 0; i < n; ++i) if (l[i] == v) return true; return false; }
 void list_remove(uint32_t* l, int& n, uint32_t v) {
     for (int i = 0; i < n; ++i)
@@ -2772,18 +2814,19 @@ void treaty_toggle(uint32_t prov_id) {
     if (!owner) { snprintf(g_tr_status, sizeof(g_tr_status), "Province %u has no owner.", prov_id); return; }
     if (owner == me) {
         if (in_list(g_tr_give, g_tr_ngive, prov_id)) list_remove(g_tr_give, g_tr_ngive, prov_id);
-        else if (g_tr_ngive < 24) g_tr_give[g_tr_ngive++] = prov_id;
+        else if (g_tr_ngive < kTrMax) g_tr_give[g_tr_ngive++] = prov_id;
         snprintf(g_tr_status, sizeof(g_tr_status), "Province %u %s what you offer.", prov_id,
                  in_list(g_tr_give, g_tr_ngive, prov_id) ? "added to" : "removed from");
         return;
     }
     if (g_tr_partner && owner != g_tr_partner) {
         g_tr_ntake = 0;
+        g_tr_popopt = 0;
         snprintf(g_tr_status, sizeof(g_tr_status), "New partner %s: their earlier provinces were removed.", tag3(owner, t));
     }
     g_tr_partner = owner;
     if (in_list(g_tr_take, g_tr_ntake, prov_id)) list_remove(g_tr_take, g_tr_ntake, prov_id);
-    else if (g_tr_ntake < 24) g_tr_take[g_tr_ntake++] = prov_id;
+    else if (g_tr_ntake < kTrMax) g_tr_take[g_tr_ntake++] = prov_id;
     if (!g_tr_status[0] || strncmp(g_tr_status, "New partner", 11) != 0)
         snprintf(g_tr_status, sizeof(g_tr_status), "Province %u %s what you ask from %s.", prov_id,
                  in_list(g_tr_take, g_tr_ntake, prov_id) ? "added to" : "removed from", tag3(owner, t));
@@ -2829,8 +2872,14 @@ void treaty_propose_population() {
         snprintf(g_tr_status, sizeof(g_tr_status), "%s refused the population exchange (chance %d%%). Relations -5.", tag3(ai, t), pe.e.chance);
         return;
     }
-    run_migrate_all(ai, me);  // your nationals living there come to you
-    run_migrate_all(me, ai);  // theirs living with you go to them
+    uintptr_t only = popopt_culture();
+    if (only) {
+        if (national_culture(country_at((int)me), only)) run_migrate_all(ai, me, culture_name(only));
+        else run_migrate_all(me, ai, culture_name(only));
+    } else {
+        if (g_tr_popopt != 1) run_migrate_all(ai, me);  // your nationals living there come to you
+        if (g_tr_popopt != 2) run_migrate_all(me, ai);  // theirs living with you go to them
+    }
     snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: about %llu people came to you, %llu went to them.", tag3(ai, t),
              rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", (unsigned long long)pe.they_lose, (unsigned long long)pe.they_get);
 }
@@ -2848,17 +2897,40 @@ void treaty_panel_refresh() {
     else snprintf(hdr, sizeof(hdr), "Treaty");
     tb_set(g_treatywin, "v2tr_header", hdr);
     auto prov_line = [&](const char* title, uint32_t* l, int cnt, uint32_t nation_of) {
-        if (n < kTrLines) snprintf(lines[n++], 160, "%s", title);
-        if (!cnt && n < kTrLines) snprintf(lines[n++], 160, "      (nothing)");
-        for (int i = 0; i < cnt && n < kTrLines; ++i) {
-            uintptr_t p = get_province(l[i]);
-            if (!p) continue;
-            ProvStats st = prov_stats(p, country_at((int)nation_of));
-            char ppl[24];
-            fmt_people(st.people, ppl, sizeof(ppl));
-            snprintf(lines[n++], 160, "      #%u   %s people   mostly %s   %s", l[i], ppl, culture_name(st.top_culture),
-                     province_has_core(p, ai) ? "(their core)" : province_has_core(p, me) ? "(your core)" : "");
+        if (cnt <= 4) {
+            if (n < kTrLines) snprintf(lines[n++], 160, "%s", title);
+            if (!cnt && n < kTrLines) snprintf(lines[n++], 160, "      (nothing)");
+            for (int i = 0; i < cnt && n < kTrLines; ++i) {
+                uintptr_t p = get_province(l[i]);
+                if (!p) continue;
+                ProvStats st = prov_stats(p, country_at((int)nation_of));
+                char ppl[24];
+                fmt_people(st.people, ppl, sizeof(ppl));
+                snprintf(lines[n++], 160, "      #%u   %s people   mostly %s   %s", l[i], ppl, culture_name(st.top_culture),
+                         province_has_core(p, ai) ? "(their core)" : province_has_core(p, me) ? "(your core)" : "");
+            }
+            return;
         }
+        uint64_t total = 0;
+        for (int i = 0; i < cnt; ++i)
+            if (uintptr_t p = get_province(l[i])) total += prov_stats(p, 0).people;
+        char ppl[24];
+        fmt_people(total, ppl, sizeof(ppl));
+        if (n < kTrLines) snprintf(lines[n++], 160, "%s %d provinces, %s people", title, cnt, ppl);
+        char buf[160] = "      ";
+        int rows = 0;
+        for (int i = 0; i < cnt; ++i) {
+            char item[12];
+            snprintf(item, sizeof(item), "#%u  ", l[i]);
+            if (strlen(buf) + strlen(item) > 120) {
+                if (rows < 2 && n < kTrLines) snprintf(lines[n++], 160, "%s", buf);
+                ++rows;
+                snprintf(buf, sizeof(buf), "      ");
+            }
+            strncat(buf, item, sizeof(buf) - strlen(buf) - 1);
+        }
+        if (rows < 2 && n < kTrLines) snprintf(lines[n++], 160, "%s", buf);
+        else if (n < kTrLines) snprintf(lines[n++], 160, "      ...");
     };
     prov_line("You give:", g_tr_give, g_tr_ngive, ai);
     snprintf(hdr, sizeof(hdr), "%s gives:", ai ? tag3(ai, t) : "They");
@@ -2876,10 +2948,12 @@ void treaty_panel_refresh() {
         char a[24], b[24];
         fmt_people(pe.they_lose, a, sizeof(a));
         fmt_people(pe.they_get, b, sizeof(b));
+        char opt[64];
+        popopt_label(opt, sizeof(opt));
         if (n < kTrLines) {
             if (pe.e.possible)
-                snprintf(lines[n++], 160, "POPULATION EXCHANGE  -  you receive %s, they receive %s  -  chance: %d%%", a, b, pe.e.chance);
-            else snprintf(lines[n++], 160, "POPULATION EXCHANGE  -  not possible");
+                snprintf(lines[n++], 160, "POPULATION (%s)  -  you receive %s, they receive %s  -  chance: %d%%", opt, a, b, pe.e.chance);
+            else snprintf(lines[n++], 160, "POPULATION (%s)  -  not possible", opt);
         }
         for (int i = 0; i < pe.e.n && n < kTrLines; ++i) snprintf(lines[n++], 160, "      %s", pe.e.why[i]);
     } else if (n < kTrLines) {
@@ -2891,6 +2965,10 @@ void treaty_panel_refresh() {
         tb_set(g_treatywin, nm, lines[i][0] ? lines[i] : " ");
     }
     tb_set(g_treatywin, "v2tr_status", g_tr_status[0] ? g_tr_status : " ");
+    char opt[64];
+    popopt_label(opt, sizeof(opt));
+    tb_set(g_treatywin, "v2tr_popopt_text", opt);
+    tb_set(g_treatywin, "v2tr_pick_text", g_tr_pick ? "Pick on map: ON" : "Pick on map: off");
 }
 void treaty_open() {
     if (!g_treatywin) {
@@ -2900,6 +2978,10 @@ void treaty_open() {
         subscribe(g_treatywin, "v2tr_prov", g_tr_prov_glue, &tcp_tr_prov_thunk);
         subscribe(g_treatywin, "v2tr_pop", g_tr_pop_glue, &tcp_tr_pop_thunk);
         subscribe(g_treatywin, "v2tr_clear", g_tr_clear_glue, &tcp_tr_clear_thunk);
+        subscribe(g_treatywin, "v2tr_pick", g_tr_pick_glue, &tcp_tr_pick_thunk);
+        subscribe(g_treatywin, "v2tr_mine", g_tr_mine_glue, &tcp_tr_mine_thunk);
+        subscribe(g_treatywin, "v2tr_theirs", g_tr_theirs_glue, &tcp_tr_theirs_thunk);
+        subscribe(g_treatywin, "v2tr_popopt", g_tr_popopt_glue, &tcp_tr_popopt_thunk);
         logf("treaty: window created");
     }
     treaty_panel_refresh();
@@ -2921,6 +3003,47 @@ extern "C" void __cdecl tcp_on_tr_prov() { treaty_propose_provinces(); treaty_pa
 extern "C" void __cdecl tcp_on_tr_pop() { treaty_propose_population(); treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_clear() { treaty_clear(); snprintf(g_tr_status, sizeof(g_tr_status), "Treaty cleared."); treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_open() { treaty_open(); }
+extern "C" void __cdecl tcp_on_tr_pick() {
+    g_tr_pick = !g_tr_pick;
+    snprintf(g_tr_status, sizeof(g_tr_status), g_tr_pick ? "Pick mode ON: every province you click on the map is added (or removed)."
+                                                         : "Pick mode off.");
+    treaty_panel_refresh();
+}
+// Adds every province of `owner` where `nation`'s people are the majority.
+int add_majority(uint32_t owner, uint32_t nation, uint32_t* list, int& cnt) {
+    static uintptr_t provs[2048];
+    int np = owned_provinces((int)owner, provs, 2048), added = 0;
+    int cap = rd<int32_t>(country_at((int)owner) + 0xBE4);
+    for (int i = 0; i < np && cnt < kTrMax; ++i) {
+        uint32_t id = rd<uint32_t>(provs[i] + 0x58);
+        if ((int)id == cap || in_list(list, cnt, id)) continue;
+        if (national_share(provs[i], nation) >= 0.5) { list[cnt++] = id; ++added; }
+    }
+    return added;
+}
+extern "C" void __cdecl tcp_on_tr_mine() {  // their land where my people live
+    if (!g_tr_partner) { snprintf(g_tr_status, sizeof(g_tr_status), "Choose a partner first: add one of their provinces."); }
+    else {
+        char t[4];
+        int a = add_majority(g_tr_partner, player_index(), g_tr_take, g_tr_ntake);
+        snprintf(g_tr_status, sizeof(g_tr_status), "Asked for %d province(s) of %s where your people are the majority.", a, tag3(g_tr_partner, t));
+    }
+    treaty_panel_refresh();
+}
+extern "C" void __cdecl tcp_on_tr_theirs() {  // my land where their people live
+    if (!g_tr_partner) { snprintf(g_tr_status, sizeof(g_tr_status), "Choose a partner first: add one of their provinces."); }
+    else {
+        char t[4];
+        int a = add_majority(player_index(), g_tr_partner, g_tr_give, g_tr_ngive);
+        snprintf(g_tr_status, sizeof(g_tr_status), "Offered %d province(s) of yours where %s's people are the majority.", a, tag3(g_tr_partner, t));
+    }
+    treaty_panel_refresh();
+}
+extern "C" void __cdecl tcp_on_tr_popopt() {
+    popcult_refresh(player_index(), g_tr_partner);
+    g_tr_popopt = (g_tr_popopt + 1) % (3 + g_tr_npopcult);
+    treaty_panel_refresh();
+}
 #define TCP_THUNK(n) "    .globl _" #n "_thunk\n_" #n "_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_" #n "\n    popfl\n    popal\n    ret\n"
 asm(".text\n"
     "    .globl _tcp_tr_add_thunk\n_tcp_tr_add_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_add\n    popfl\n    popal\n    ret\n"
@@ -2928,7 +3051,11 @@ asm(".text\n"
     "    .globl _tcp_tr_prov_thunk\n_tcp_tr_prov_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_prov\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_pop_thunk\n_tcp_tr_pop_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_pop\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_clear_thunk\n_tcp_tr_clear_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_clear\n    popfl\n    popal\n    ret\n"
-    "    .globl _tcp_tr_open_thunk\n_tcp_tr_open_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_open\n    popfl\n    popal\n    ret\n");
+    "    .globl _tcp_tr_open_thunk\n_tcp_tr_open_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_open\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_pick_thunk\n_tcp_tr_pick_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_pick\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_mine_thunk\n_tcp_tr_mine_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_mine\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_theirs_thunk\n_tcp_tr_theirs_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_theirs\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_popopt_thunk\n_tcp_tr_popopt_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_popopt\n    popfl\n    popal\n    ret\n");
 #undef TCP_THUNK
 
 void treaty_subscribe_cmd(void* win) { subscribe(win, "v2cmd_treaty", g_tr_open_glue, &tcp_tr_open_thunk); }
@@ -2936,6 +3063,16 @@ void treaty_subscribe_cmd(void* win) { subscribe(win, "v2cmd_treaty", g_tr_open_
 // per-frame: the "Treaty" button next to the province window
 void treaty_frame_sync(bool open, uintptr_t prov) {
     uint32_t me = player_index();
+    static uint32_t last_pick = 0;
+    if (!open || !prov) last_pick = 0;
+    else if (g_tr_pick && g_treatywin && win_visible(g_treatywin)) {
+        uint32_t id = rd<uint32_t>(prov + 0x58);
+        if (id != last_pick) {
+            last_pick = id;
+            treaty_toggle(id);
+            treaty_panel_refresh();
+        }
+    }
     bool want = open && prov && rd<uint32_t>(prov + 0x12C) != 0;
     if (want && !g_traddwin) {
         g_traddwin = gui_create("v2treaty_add");
@@ -2974,8 +3111,8 @@ extern "C" ConsoleResult* __cdecl cmd_treaty(ConsoleResult* out, ArgVector* args
         uint32_t id;
         if (_stricmp(a, "give") == 0) mode = 1;
         else if (_stricmp(a, "take") == 0) mode = 2;
-        else if (parse_uint(a, &id) && mode == 1 && g_tr_ngive < 24) g_tr_give[g_tr_ngive++] = id;
-        else if (parse_uint(a, &id) && mode == 2 && g_tr_ntake < 24) g_tr_take[g_tr_ntake++] = id;
+        else if (parse_uint(a, &id) && mode == 1 && g_tr_ngive < kTrMax) g_tr_give[g_tr_ngive++] = id;
+        else if (parse_uint(a, &id) && mode == 2 && g_tr_ntake < kTrMax) g_tr_take[g_tr_ntake++] = id;
     }
     g_tr_status[0] = 0;
     treaty_open();
@@ -3096,7 +3233,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-25e (English, treaties)");
+    logf("TGC Convert Pop build 2026-10-25f (treaties: pick mode, bulk add, population options)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
