@@ -57,8 +57,8 @@ guiTypes = {
 	windowType = {
 		name = "v2cmd_window"
 		backGround = "Background"
-		position = { x = -360 y = -259 }
-		size = { x = 720 y = 518 }
+		position = { x = -360 y = -269 }
+		size = { x = 720 y = 538 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -295,8 +295,19 @@ guiTypes = {
 			fixedsize = yes
 		}
 		instantTextBoxType = {
-			name = "v2cmd_line22"
-			position = { x = 30 y = 474 }
+			name = "v2cmd_line21"
+			position = { x = 30 y = 464 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "Fereastra Diplomatie: tab-ul 'Invita in bloc' invita tara selectata (doar liderul; cu yesmen accepta mereu)."
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_line23"
+			position = { x = 30 y = 494 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
@@ -1384,6 +1395,40 @@ guiTypes = {
 			maxHeight = 18
 			text = " "
 			format = left
+			fixedsize = yes
+		}
+	}
+
+	# "Invita in bloc" tab on the diplomacy screen (next to the Crisis tab). Shown by TGCConvertPop.dll when
+	# the diplomacy screen is open and you are in a bloc. Move it with position (relative to the screen centre,
+	# like the diplomacy window itself: x=-512 y=-250).
+	windowType = {
+		name = "v2bloc_diplo"
+		backGround = ""
+		position = { x = 153 y = -237 }
+		size = { x = 156 y = 34 }
+		moveable = 0
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {
+			name = "v2bloc_invite"
+			position = { x = 0 y = 0 }
+			quadTextureSprite = "GFX_prod_tab_button"
+			clicksound = click
+		}
+		instantTextBoxType = {
+			name = "v2bloc_invite_text"
+			position = { x = 3 y = 8 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			text = "Invita in bloc"
+			maxWidth = 148
+			maxHeight = 20
+			format = centre
 			fixedsize = yes
 		}
 	}

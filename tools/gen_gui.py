@@ -25,6 +25,7 @@ lines = [
  (L, "bloc_identity <bloc> militar|comercial|imperiu|religios      bloc_leader <TAG>      bloc_info [bloc]"),
  (L, "bloc_remove <TAG>     bloc_list     bloc_disband <nume>     bloc_map [on|off]  (harta politica pe blocuri)"),
  (L, "In razboi, membrii intra de partea membrului implicat. Panoul Blocuri arata coeziunea si efectele identitatii."),
+ (L, "Fereastra Diplomatie: tab-ul 'Invita in bloc' invita tara selectata (doar liderul; cu yesmen accepta mereu)."),
  None,
  (L, "Jurnal: the_grand_loader.log langa v2game.exe. Totalurile de populatie se actualizeaza a doua zi."),
 ]
@@ -223,6 +224,41 @@ add(button("v2bloc_prev", "GFX_button_standard_144", 22, yb, "< Anterior"))
 add(tbox("v2bloc_page", 0, yb + 8, "vic_18", W, 22, "centre"))
 add(button("v2bloc_next", "GFX_button_standard_144", W - 22 - 144, yb, "Urmator >"))
 add(tbox("v2bloc_mapstate", 30, yb + 44, "Arial12", W - 60, 18))
+add('''	}
+
+	# "Invita in bloc" tab on the diplomacy screen (next to the Crisis tab). Shown by TGCConvertPop.dll when
+	# the diplomacy screen is open and you are in a bloc. Move it with position (relative to the screen centre,
+	# like the diplomacy window itself: x=-512 y=-250).
+	windowType = {
+		name = "v2bloc_diplo"
+		backGround = ""
+		position = { x = 153 y = -237 }
+		size = { x = 156 y = 34 }
+		moveable = 0
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {
+			name = "v2bloc_invite"
+			position = { x = 0 y = 0 }
+			quadTextureSprite = "GFX_prod_tab_button"
+			clicksound = click
+		}
+		instantTextBoxType = {
+			name = "v2bloc_invite_text"
+			position = { x = 3 y = 8 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			text = "Invita in bloc"
+			maxWidth = 148
+			maxHeight = 20
+			format = centre
+			fixedsize = yes
+		}
+''')
 add('\t}\n}\n')
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))
 open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r\n').write(f'''spriteTypes = {{

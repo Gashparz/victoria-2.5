@@ -1739,7 +1739,9 @@ _tcp_bloc_back_thunk:
     ret
 )");
 
+void drop_diplo_window();
 void drop_windows() {  // before the topbar rebuilds or dies: our windows go with it
+    drop_diplo_window();
     win_destroy(g_blocwin);
     win_destroy(g_cmdwin);
     win_destroy(g_tab);
@@ -2105,44 +2107,55 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_leader(ConsoleResult* out, ArgVector*
     bloc_panel_refresh();
     return reply(out, true, "%s now leads %s.", arg_text(args, 0), b);
 }
-extern "C" ConsoleResult* __cdecl cmd_bloc_invite(ConsoleResult* out, ArgVector* args) {
-    init_result(out);
-    if (ConsoleResult* g = gate(out)) return g;
-    if (arg_count(args) < 2) return reply(out, false, "Usage: bloc_invite <bloc> <TAG>  (the AI decides; bloc_add forces it)");
-    collect_blocs();
-    BlocInfo* b = find_bloc(arg_text(args, 0));
-    if (!b) return reply(out, false, "No bloc called %s.", arg_text(args, 0));
-    const char* tag = arg_text(args, 1);
-    int ci = country_index(tag);
-    if (ci < 0) return reply(out, false, "Unknown country %s.", tag);
+// Invitation logic shared by the console and the diplomacy button. Returns 1 accepted, 0 refused, -1 not possible.
+// With the vanilla "yesmen" cheat on (byte 0x012589A7) the AI always accepts.
+constexpr uintptr_t VA_YESMEN = 0x012589A7;
+int invite_core(BlocInfo* b, int ci, char* msg, size_t n) {
+    char tb[4];
+    const char* tag = tag_of((uint32_t)ci, tb);
     uintptr_t c = country_at(ci);
     char cur[64];
-    if (!country_alive(c)) return reply(out, false, "%s does not exist on the map.", tag);
-    if (country_bloc(c, cur, sizeof(cur))) return reply(out, false, "%s is already in bloc %s.", tag, cur);
+    if (!country_alive(c)) { snprintf(msg, n, "%s nu exista pe harta.", tag); return -1; }
+    if (country_bloc(c, cur, sizeof(cur))) { snprintf(msg, n, "%s este deja in blocul %s.", tag, cur); return -1; }
     for (int i = 0; i < b->n; ++i)
-        if (at_war_with((uint32_t)ci, b->members[i])) return reply(out, false, "%s refuses: it is at war with a member of %s.", tag, b->name);
+        if (at_war_with((uint32_t)ci, b->members[i])) { snprintf(msg, n, "%s refuza: e in razboi cu un membru al blocului.", tag); return 0; }
     uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
     bool player = world && rd<uint32_t>(world + 0xB60) == (uint32_t)ci;
+    bool yesmen = rd<uint8_t>(R(VA_YESMEN)) != 0;
     int rel = relation(b->leader, (uint32_t)ci);
     uintptr_t lc = country_at((int)b->leader);
     bool same_religion = lc && rd<uintptr_t>(lc + 0xE68) == rd<uintptr_t>(c + 0xE68);
     int chance = 40 + rel / 5 + (same_religion ? 15 : 0) - 3 * b->n + (prestige_of(c) < prestige_of(lc) ? 10 : -10) + (b->cohesion - 50) / 5;
     if (chance < 5) chance = 5;
     if (chance > 95) chance = 95;
-    bool yes = player || (int)(rnd() % 100) < chance;
+    bool yes = player || yesmen || (int)(rnd() % 100) < chance;
     if (yes) {
         char flag[40];
         snprintf(flag, sizeof(flag), "bloc_%s", b->name);
         flag_set(c, flag, true);
         relation_add(b->leader, (uint32_t)ci, 10);
-        bloc_panel_refresh();
         bloc_map_redraw();
+        snprintf(msg, n, "%s a acceptat sa intre in %s%s (sansa %d%%).", tag, b->name, yesmen ? " [yesmen]" : "", chance);
     } else {
         relation_add(b->leader, (uint32_t)ci, -5);
+        snprintf(msg, n, "%s a refuzat sa intre in %s (sansa %d%%, relatii -5).", tag, b->name, chance);
     }
-    logf("bloc_invite %s %s: chance %d%%, %s", b->name, tag, chance, yes ? "accepted" : "refused");
-    return reply(out, yes, yes ? "%s accepted to join %s (chance was %d%%)." : "%s refused to join %s (chance was %d%%; relations -5).",
-                 tag, b->name, chance);
+    logf("bloc invite %s -> %s: chance %d%%, yesmen %d, %s", b->name, tag, chance, yesmen ? 1 : 0, yes ? "accepted" : "refused");
+    return yes ? 1 : 0;
+}
+extern "C" ConsoleResult* __cdecl cmd_bloc_invite(ConsoleResult* out, ArgVector* args) {
+    init_result(out);
+    if (ConsoleResult* g = gate(out)) return g;
+    if (arg_count(args) < 2) return reply(out, false, "Usage: bloc_invite <bloc> <TAG>  (the AI decides; bloc_add forces it; yesmen makes it accept)");
+    collect_blocs();
+    BlocInfo* b = find_bloc(arg_text(args, 0));
+    if (!b) return reply(out, false, "No bloc called %s.", arg_text(args, 0));
+    int ci = country_index(arg_text(args, 1));
+    if (ci < 0) return reply(out, false, "Unknown country %s.", arg_text(args, 1));
+    char msg[200];
+    int r = invite_core(b, ci, msg, sizeof(msg));
+    bloc_panel_refresh();
+    return reply(out, r == 1, "%s", msg);
 }
 extern "C" ConsoleResult* __cdecl cmd_bloc_info(ConsoleResult* out, ArgVector* args) {
     init_result(out);
@@ -2163,6 +2176,7 @@ extern "C" ConsoleResult* __cdecl cmd_bloc_info(ConsoleResult* out, ArgVector* a
 // ---- the bloc panel: one bloc per page (Victoria 3 style) ----
 constexpr int kRows = 16;
 int g_bloc_page = 0;
+char g_bloc_status[220] = "";
 }  // namespace
 extern "C" void tcp_bloc_prev_thunk();
 extern "C" void tcp_bloc_next_thunk();
@@ -2187,7 +2201,12 @@ void fmt_people(uint64_t n, char* out, size_t sz) {
 void bloc_panel_refresh() {
     if (!g_blocwin) return;
     collect_blocs();
-    tb_set(g_blocwin, "v2bloc_mapstate", g_bloc_map ? "Harta blocurilor: PORNITA (modul politic)" : "Harta blocurilor: oprita");
+    {
+        char st[300];
+        snprintf(st, sizeof(st), "%s%s%s", g_bloc_map ? "Harta blocurilor: PORNITA" : "Harta blocurilor: oprita",
+                 g_bloc_status[0] ? "     |     " : "", g_bloc_status);
+        tb_set(g_blocwin, "v2bloc_mapstate", st);
+    }
     auto row = [&](int r, const char* a, const char* b, const char* c, const char* d, const char* e) {
         char n[24];
         const char* v[5] = {a, b, c, d, e};
@@ -2288,6 +2307,108 @@ void bloc_panel_subscribe_paging() {
     subscribe(g_blocwin, "v2bloc_next", g_bloc_next_glue, &tcp_bloc_next_thunk);
 }
 
+// ---- "Invita in bloc" button on the diplomacy screen ----
+// Diplomacy view = world+0xB24 -> vt 0x124 (); its +0x20 = window (+0x67 visible), its +0x24 -> selected
+// country CTag at +0x128 / +0x12C (as read by the diplomatic map mode at 0x007FCD09). Visibility is synced
+// every frame from CInGameIdler_Update (vtable slot 0x00E0A350, thiscall 1 arg).
+constexpr uintptr_t VA_IDLER_SLOT = 0x00E0A350, VA_IDLER_UPDATE = 0x00654D80;
+typedef int(__fastcall* IdlerFn)(void*, void*, uint32_t);
+IdlerFn g_idler_orig = nullptr;
+void* g_diplowin = nullptr;
+}  // namespace
+extern "C" void tcp_diplo_invite_thunk();
+namespace {
+alignas(8) uint8_t g_diplo_glue[kGlueSize];
+
+uintptr_t diplomacy_view() {
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    uintptr_t map = world ? rd<uintptr_t>(world + 0xB24) : 0;
+    if (!map) return 0;
+    return (uintptr_t)vcall0((void*)map, 0x124);
+}
+bool diplomacy_open(uint32_t* selected) {
+    uintptr_t v = diplomacy_view();
+    uintptr_t w = v ? rd<uintptr_t>(v + 0x20) : 0;
+    if (!w || !rd<uint8_t>(w + 0x67)) return false;
+    uintptr_t t = rd<uintptr_t>(v + 0x24);
+    if (selected) *selected = t ? rd<uint32_t>(t + 0x12C) : 0;
+    return true;
+}
+uint32_t player_index() {
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    return world ? rd<uint32_t>(world + 0xB60) : 0;
+}
+
+extern "C" void __cdecl tcp_on_diplo_invite() {
+    uint32_t sel = 0;
+    diplomacy_open(&sel);
+    uint32_t me = player_index();
+    char bloc[64];
+    collect_blocs();
+    if (!country_bloc(country_at((int)me), bloc, sizeof(bloc))) {
+        snprintf(g_bloc_status, sizeof(g_bloc_status), "Nu esti in niciun bloc. Fa unul: bloc_add <nume> <tag-ul tau>");
+    } else if (!sel || sel == me) {
+        snprintf(g_bloc_status, sizeof(g_bloc_status), "Alege intai o alta tara in fereastra de diplomatie.");
+    } else {
+        BlocInfo* b = find_bloc(bloc);
+        if (b && b->leader != me) {
+            char tb[4];
+            snprintf(g_bloc_status, sizeof(g_bloc_status), "Doar liderul blocului (%s) poate invita tari.", tag_of(b->leader, tb));
+        } else if (b) {
+            invite_core(b, (int)sel, g_bloc_status, sizeof(g_bloc_status));
+        }
+    }
+    // show the result in the bloc panel, on the player's bloc
+    collect_blocs();
+    for (int k = 0; k < g_nblocs; ++k)
+        if (_stricmp(g_blocs[k].name, bloc) == 0) g_bloc_page = k;
+    tcp_on_blocs_click();
+}
+asm(R"(
+    .text
+    .globl _tcp_diplo_invite_thunk
+_tcp_diplo_invite_thunk:
+    pushal
+    pushfl
+    cld
+    call  _tcp_on_diplo_invite
+    popfl
+    popal
+    ret
+)");
+
+int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
+    int r = g_idler_orig(self, edx, a);
+    if (!g_topbar || !g_layer || !g_blocs_ok) return r;
+    static int skip = 0;
+    if (++skip < 6) return r;  // ~10 checks a second is plenty
+    skip = 0;
+    bool open = diplomacy_open(nullptr);
+    bool want = false;
+    if (open) {
+        char b[64];
+        want = country_bloc(country_at((int)player_index()), b, sizeof(b));
+    }
+    if (want && !g_diplowin) {
+        g_diplowin = gui_create("v2bloc_diplo");
+        if (g_diplowin) {
+            subscribe(g_diplowin, "v2bloc_invite", g_diplo_glue, &tcp_diplo_invite_thunk);
+            logf("diplomacy: bloc invite button created");
+        }
+    }
+    if (g_diplowin && win_visible(g_diplowin) != want) win_show(g_diplowin, want);
+    return r;
+}
+void install_diplo_button() {
+    uint32_t* slot = (uint32_t*)R(VA_IDLER_SLOT);
+    if (*slot != R(VA_IDLER_UPDATE)) { logf("diplomacy button: idler slot differs (%08X); button off", *slot); return; }
+    g_idler_orig = (IdlerFn)R(VA_IDLER_UPDATE);
+    uint32_t v = (uint32_t)(uintptr_t)&idler_hook;
+    logf(write_code((uintptr_t)slot, &v, 4) ? "diplomacy button: frame hook installed" : "diplomacy button: VirtualProtect failed");
+}
+
+void drop_diplo_window() { win_destroy(g_diplowin); }
+
 void install_bloc_tick() {
     uintptr_t site = R(VA_DAYTICK_CALL);
     if (*(uint8_t*)site != 0xE8) { logf("bloc tick: call at 0x683AB1 not found; monthly bloc effects off"); return; }
@@ -2378,7 +2499,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-25 (power blocs: leader, identity, cohesion)");
+    logf("TGC Convert Pop build 2026-10-25b (power blocs + diplomacy invite)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
@@ -2396,6 +2517,7 @@ extern "C" __declspec(dllexport) int TGL_PluginInit(const TGL_HostApi* host) {
     install_blocs();
     if (g_blocs_ok) install_bloc_map();
     if (g_blocs_ok) install_bloc_tick();
+    if (g_blocs_ok && g_tab_enabled) install_diplo_button();
     return install_commands() ? 0 : 2;
 }
 

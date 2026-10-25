@@ -95,3 +95,11 @@ The plugin destroys its windows when the topbar rebuilds or is destroyed, mirror
 - Relations: `country+0xBE8[other]+0x3C` (×1000, ±200). Prestige: `country+0xEA0` (×1000).
 - Monthly effects: the call to `DayTick` at `0x683AB1` (stdcall world) is redirected. When the month changes (date `world+0xB0C`, month table `0xF1027C`), the plugin applies the identity effects.
 - Text boxes: window vt `+0x3C` finds a text box. The plugin assigns its `std::string` at `+0xDC` and calls `SetText 0xA5ECC0` (ESI = `[box+0xA0]`), as the game does everywhere.
+
+## Diplomacy invite button
+
+- Diplomacy view: `world+0xB24` → vt `+0x124`.
+  - Its `+0x20` is the window (`+0x67` = visible).
+  - Its `+0x24` points to the selected country's CTag at `+0x128`/`+0x12C`, the same fields the diplomatic map mode reads (`0x7FCD09`).
+- Visibility of the `v2bloc_diplo` window is synced from `CInGameIdler_Update` (vtable slot `0xE0A350`, thiscall 1 arg), every 6th frame.
+- `yesmen` cheat: the byte `0x12589A7`.
