@@ -213,7 +213,7 @@
 
   // --- bulk ---
   // scope: {provinces:[ids]} | {owner:TAG} | {all:true}; filter: {culture, religion, type}; set: {culture, religion}
-  P.bulkConvert = function (scope, filter, set) { return this.grouped("conversie", () => this._bulkConvert(scope, filter, set)); };
+  P.bulkConvert = function (scope, filter, set) { return this.grouped("conversion", () => this._bulkConvert(scope, filter, set)); };
   P._bulkConvert = function (scope, filter, set) {
     let ids;
     if (scope.provinces) ids = scope.provinces;

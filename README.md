@@ -1,6 +1,6 @@
 # Victoria II – Console Commands, Top Bar Tab & Save Editor
 
-New developer-console commands for **Victoria II 3.04 (Steam)** that move, convert and resize pops and edit accepted cultures, a **COMENZI** tab in the top bar that lists them in game, and a browser-based **save editor** with an interactive province map.
+New developer-console commands for **Victoria II 3.04 (Steam)** that move, convert and resize pops and edit accepted cultures, a **COMMANDS** tab in the top bar that lists them in game, and a browser-based **save editor** with an interactive province map.
 
 Everything is mod-agnostic: it works with vanilla, **GFM**, **TGC** or any other mod.
 
@@ -29,7 +29,8 @@ Open the console with `~`. Province ids come from the built-in `showprovinceid` 
 | `bloc_add <name> <TAGs>` | Puts countries into a **bloc** (mega alliance): when a member enters a war, every other living member joins the same side |
 | `bloc_remove <TAGs>`, `bloc_list [name]`, `bloc_disband <name>` | Manage blocs |
 | `bloc_invite <bloc> <TAG>` | Invites a country; the AI accepts or refuses |
-| `bloc_identity <bloc> <militar\|comercial\|imperiu\|religios>`, `bloc_leader <TAG>`, `bloc_info` | Identity, leader and overview (cohesion) |
+| `bloc_identity <bloc> <military\|trade\|empire\|religious>`, `bloc_leader <TAG>`, `bloc_info` | Identity, leader and overview (cohesion) |
+| `treaty <TAG> [give <ids>] [take <ids>]`, `treaty_propose`, `treaty_population [TAG]` | Treaties from the console (same as the in-game window) |
 | `bloc_map [on\|off]` | Bloc map: the political map mode colours each bloc (others grey) |
 
 A **filter** can be a culture (`polish`), a religion (`catholic`), a pop type (`farmers`) or a pop id taken from the list commands.
@@ -57,7 +58,7 @@ When the game adds a member to a war side, the plugin adds every other living me
 - If both war leaders are in the same bloc, nobody else is pulled in.
 - Crisis and rebel wars, and loading a save, are left alone.
 
-The **Blocuri** button in the COMENZI window opens a panel that lists every bloc and its members. The panel updates as you change blocs.
+The **Blocs** button in the COMMANDS window opens a panel that lists every bloc and its members. The panel updates as you change blocs.
 
 **Power blocs (inspired by Victoria 3):**
 
@@ -67,16 +68,37 @@ The **Blocuri** button in the COMENZI window opens a panel that lists every bloc
   - Sovereign empire: the leader gains prestige for every member.
   - Religious union: in every member, one small pop converts to the leader's religion.
 - **Cohesion.** It runs from 0 to 100 and comes from relations with the leader, bloc size, shared religion and members fighting each other. Below 20 (fractured), only the leader's wars pull the bloc in.
-- **Invitations.** `bloc_invite` lets the AI decide, while `bloc_add` forces a country in. In game, a bloc leader can click a country on the map: an **Invita <TAG> in bloc** button appears next to the province window. With the vanilla `yesmen` cheat on, the AI always accepts.
+- **Invitations.** `bloc_invite` lets the AI decide, while `bloc_add` forces a country in. In game, a bloc leader can click a country on the map: an **Invite <TAG> to bloc** button appears next to the province window. With the vanilla `yesmen` cheat on, the AI always accepts.
 - **Panel.** The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects and a members table with population, prestige, provinces and relations.
 
-**Bloc map:** `bloc_map` or the **Harta on/off** button in the panel switches the political map mode to bloc colours. Owner and occupier both show their bloc colour, and countries outside a bloc turn grey.
+**Bloc map:** `bloc_map` or the **Map on/off** button in the panel switches the political map mode to bloc colours. Owner and occupier both show their bloc colour, and countries outside a bloc turn grey.
 
 Set `blocs=0` in the ini to turn the feature off.
 
+### Treaties
+
+You can propose a **province exchange** or a **population exchange** to any country, entirely in game:
+
+1. Click a province on the map.
+2. Press **Treaty: offer #id** or **Treaty: ask TAG for #id**, next to the province window.
+3. Open **Treaties** in the COMMANDS window.
+
+The treaty window lists the AI's chance and the reasons behind it:
+
+- **Province exchange.** What each side receives is valued by population, how much of it belongs to the AI's own nation, and cores.
+  - −25 if the AI would give up land of its own nation, +15 if it gets its own people back.
+  - −20 if nothing is offered in return.
+  - Power difference, relations, religion and shared bloc also count.
+  - A capital is never given up.
+- **Population exchange.** Modelled on Greece and Turkey in 1923: each side receives its own nationals living in the other.
+  - It weighs the net population and whether the minority sent away has another faith.
+  - It also weighs the minority's size, relations and shared bloc.
+
+Refusals cost relations. With `yesmen` on, the AI always accepts. Provinces change hands through the game's own `secede_province` effect.
+
 ### Top bar tab
 
-A **COMENZI** tab appears to the right of *Military* and opens a window listing the commands; `ESC` or `X` closes it. It is defined in `interface/zz_v2commands.gui` (edit `position` there to move it). Set `topbar_tab=0` in the ini to turn it off.
+A **COMMANDS** tab appears to the right of *Military* and opens a window listing the commands; `ESC` or `X` closes it. It is defined in `interface/zz_v2commands.gui` (edit `position` there to move it). Set `topbar_tab=0` in the ini to turn it off.
 
 ### Save editor
 

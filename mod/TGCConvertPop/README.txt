@@ -42,23 +42,37 @@ Console commands (single player)
         When a bloc member enters a war (declares, is attacked, or joins as an ally), every other
         living member joins the same side. Stored as the country flag bloc_<name>, so it is saved
         in the save game. Normal alliances are untouched. Crisis and rebel wars are not affected.
-        Panel: top bar tab COMENZI -> "Blocuri" button shows every bloc and its members.
+        Panel: top bar tab COMMANDS -> "Blocs" button shows every bloc and its members.
   bloc_map [on|off]   the political map mode shows each bloc in its own colour (others grey);
-        also the "Harta on/off" button in the bloc panel.
+        also the "Map on/off" button in the bloc panel.
 
   Power blocs (Victoria 3 style):
   bloc_invite <bloc> <TAG>        the AI accepts or refuses (relations, religion, size, prestige, cohesion)
-  bloc_identity <bloc> <militar|comercial|imperiu|religios>     bloc_leader <TAG>     bloc_info [bloc]
-        militar    members join wars together; relations with the leader +2/month
-        comercial  relations between all members +3/month
-        imperiu    leader +0.5 prestige per member per month
-        religios   each month one small pop (<= 3000) per member converts to the leader's religion
+  bloc_identity <bloc> <military|trade|empire|religious>     bloc_leader <TAG>     bloc_info [bloc]
+        military   members join wars together; relations with the leader +2/month
+        trade      relations between all members +3/month
+        empire     leader +0.5 prestige per member per month
+        religious  each month one small pop (<= 3000) per member converts to the leader's religion
   Cohesion 0-100 (relations with the leader, size, shared religion, members at war with each other):
         below 20 (Fracturat) only the leader's wars pull the bloc in.
   The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects, members table.
-  Invite button: click a country on the map; next to the province window an "Invita <TAG> in bloc" button
+  Invite button: click a country on the map; next to the province window an "Invite <TAG> to bloc" button
         appears (when you lead a bloc). With the yesmen cheat on, the AI always accepts. The result shows in the
         bloc panel, which opens on your bloc.
+
+Treaties (province exchange, population exchange)
+  Click a province on the map: a "Treaty: offer #id" / "Treaty: ask TAG for #id" button appears next to the
+  province window. Add provinces on both sides, then COMMANDS -> Treaties (or it opens by itself).
+  The treaty window shows the AI's chance and every reason:
+    province exchange    value of what each side gives (population, its own nation's share, cores),
+                         -25 if it would give up land of its own nation, +15 if it gets its own people back,
+                         -20 if nothing is offered, power difference, relations, religion, same bloc;
+                         a capital is never given.
+    population exchange  each side gets its own nationals (primary + accepted cultures) from the other,
+                         like Greece and Turkey in 1923: net population, minority of another faith,
+                         size of the minority, relations, same bloc.
+  Refusals cost relations (-10 / -5); with the yesmen cheat on, the AI always accepts.
+  Console: treaty <TAG> [give <ids>] [take <ids>], treaty_propose, treaty_population [TAG]
 
 Pop merging: the game merges a moving pop into any pop of the same type and religion,
 ignoring culture (vanilla bug). migrate_pop uses a fixed check (same type, culture AND religion).
@@ -67,7 +81,7 @@ fix_merge_everywhere=1 in mod\TGCConvertPop.ini fixes it for the whole game too.
 Province ids: console command "showprovinceid", then hover a province.
 Names are script names (polish, catholic, farmers).
 
-Top bar tab "COMENZI" (experimental)
+Top bar tab "COMMANDS" (experimental)
   A tab next to Military opens a window with this command list (ESC or X closes it).
   Files: interface\zz_v2commands.gui and interface\zz_v2commands.gfx in the game folder (work with any mod).
   Move the tab: edit position = { x = 1090 y = 0 } of "v2cmd_tab" in zz_v2commands.gui.

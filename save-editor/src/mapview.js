@@ -19,10 +19,10 @@ const MapView = (() => {
   async function fromFolder(f) {
     const def = await f.read("map/definition.csv");
     const bmp = await f.readBin("map/provinces.bmp");
-    if (!def || !bmp) throw new Error("map/provinces.bmp sau definition.csv lipsește");
+    if (!def || !bmp) throw new Error("map/provinces.bmp or definition.csv is missing");
     const dv = new DataView(bmp.buffer, bmp.byteOffset, bmp.byteLength);
     const off = dv.getUint32(10, true), w = dv.getInt32(18, true), hh = dv.getInt32(22, true), bpp = dv.getUint16(28, true);
-    if (bpp !== 24) throw new Error("provinces.bmp trebuie să fie 24-bit");
+    if (bpp !== 24) throw new Error("provinces.bmp must be 24-bit");
     const h = Math.abs(hh), bottomUp = hh > 0, stride = (w * 3 + 3) & ~3;
     const lut = new Map();
     for (const line of def.split(/\r?\n/)) {
@@ -60,7 +60,7 @@ const MapView = (() => {
     return g;
   }
   async function load(src) {
-    if (!src) throw new Error("Nu există date de hartă");
+    if (!src) throw new Error("No map data (choose the game folder in the Mod data tab)");
     if (geo && geo.src === src) return geo;
     if (loading && loading.src === src) return loading.p;
     const p = (async () => { const g = finish(src.pack ? await fromPack(src.pack) : await fromFolder(src.folder)); g.src = src; geo = g; return g; })();

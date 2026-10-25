@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ro">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -88,20 +88,20 @@ details summary { cursor: pointer; color: var(--muted); margin: 12px 0 6px; }
 <body>
 <header>
   <h1>Victoria II Save Editor</h1>
-  <button class="primary" id="bOpen">Deschide salvarea</button>
-  <button id="bMod">Adaugă folder joc/mod</button>
-  <button id="bUndo" disabled>Anulează</button>
-  <button id="bSaveAs" disabled>Salvează ca…</button>
-  <button id="bSave" disabled>Suprascrie</button>
-  <span id="status">Nicio salvare deschisă</span>
+  <button class="primary" id="bOpen">Open save</button>
+  <button id="bMod">Add game/mod folder</button>
+  <button id="bUndo" disabled>Undo</button>
+  <button id="bSaveAs" disabled>Save as…</button>
+  <button id="bSave" disabled>Overwrite</button>
+  <span id="status">No save open</span>
 </header>
 <nav id="tabs">
-  <button data-tab="countries" class="on">Țări</button>
-  <button data-tab="provinces">Provincii</button>
-  <button data-tab="map">Hartă</button>
-  <button data-tab="bulk">Conversie în masă</button>
-  <button data-tab="raw">Text brut</button>
-  <button data-tab="mods">Date mod</button>
+  <button data-tab="countries" class="on">Countries</button>
+  <button data-tab="provinces">Provinces</button>
+  <button data-tab="map">Map</button>
+  <button data-tab="bulk">Bulk conversion</button>
+  <button data-tab="raw">Raw text</button>
+  <button data-tab="mods">Mod data</button>
 </nav>
 <main id="main"></main>
 <div id="toast"></div>
@@ -117,17 +117,17 @@ details summary { cursor: pointer; color: var(--muted); margin: 12px 0 6px; }
 "use strict";
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const fmt = (n) => Number(n).toLocaleString("ro-RO");
+const fmt = (n) => Number(n).toLocaleString("en-US");
 const S = { save: null, handle: null, tab: "countries", country: null, province: null, owners: new Map(), showDead: false, qC: "", qP: "", rawKey: "" };
 const D = ModData.data;
 
 function toast(msg, ms = 2600) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove("on"), ms); }
 function status() {
   const st = $("#status");
-  if (!S.save) { st.textContent = "Nicio salvare deschisă"; st.className = ""; }
+  if (!S.save) { st.textContent = "No save open"; st.className = ""; }
   else {
     const n = S.save.steps();
-    st.textContent = `${S.save.name} · ${S.save.date || ""} · ${n === 1 ? "1 modificare nesalvată" : n ? n + " modificări nesalvate" : "nemodificat"}` + (D.folders.length ? ` · date: ${D.folders.map((f) => f.name).join(" + ")}` : "");
+    st.textContent = `${S.save.name} · ${S.save.date || ""} · ${n === 1 ? "1 unsaved change" : n ? n + " unsaved changes" : "unchanged"}` + (D.folders.length ? ` · data: ${D.folders.map((f) => f.name).join(" + ")}` : "");
     st.className = S.save.dirty ? "dirty" : "";
   }
   $("#bUndo").disabled = !S.save || !S.save.undo.length;
@@ -164,12 +164,12 @@ async function openSave() {
     try {
       const [h] = await showOpenFilePicker({ types: [{ description: "Victoria II save", accept: { "text/plain": [".v2"] } }] });
       await loadFile(await h.getFile(), h);
-    } catch (e) { if (e.name !== "AbortError") toast("Eroare: " + e.message); }
+    } catch (e) { if (e.name !== "AbortError") toast("Error: " + e.message); }
   } else $("#fileIn").click();
 }
 $("#fileIn").onchange = (e) => e.target.files[0] && loadFile(e.target.files[0], null);
 async function loadFile(file, handle) {
-  $("#main").innerHTML = `<div class="empty"><h2>Se încarcă ${esc(file.name)}…</h2><p>${fmt(file.size)} octeți</p></div>`;
+  $("#main").innerHTML = `<div class="empty"><h2>Loading ${esc(file.name)}…</h2><p>${fmt(file.size)} bytes</p></div>`;
   await new Promise((r) => setTimeout(r, 30));
   try {
     const txt = V2.bytesToStr(new Uint8Array(await file.arrayBuffer()));
@@ -179,8 +179,8 @@ async function loadFile(file, handle) {
     S.save = sv; S.handle = handle; S.country = sv.player || null; S.province = null;
     refreshIndex();
     status(); render();
-    toast(`Încărcat: ${fmt(sv.provinces.size)} provincii, ${fmt(sv.countries.size)} țări`);
-  } catch (e) { console.error(e); $("#main").innerHTML = `<div class="empty"><h2 class="bad">Nu am putut citi fișierul</h2><p>${esc(e.message)}</p></div>`; }
+    toast(`Loaded: ${fmt(sv.provinces.size)} provinces, ${fmt(sv.countries.size)} countries`);
+  } catch (e) { console.error(e); $("#main").innerHTML = `<div class="empty"><h2 class="bad">Could not read the file</h2><p>${esc(e.message)}</p></div>`; }
 }
 function refreshIndex() { S.allProv = S.save.allProvinces(); S.owners = S.save.ownersIndex(); }
 
@@ -191,16 +191,16 @@ async function addFolder() {
       if (e.name === "AbortError") return;
       // Chrome refuses folders under Program Files: use the classic folder upload instead
       S.tab = "mods"; S.needClassic = true; render();
-      toast("Browserul nu dă acces direct la acest folder. Folosește butonul „Alege folder (metoda clasică)”.", 6000);
+      toast("The browser does not give direct access to this folder. Use the \"Choose the game folder (classic)\" button.", 6000);
     }
   } else $("#dirIn").click();
 }
 $("#dirIn").onchange = async (e) => { if (e.target.files.length) await useSource(ModData.fromFileList(e.target.files)); e.target.value = ""; };
 // A game folder (v2game.exe / mod\*.mod) opens the mod picker; any other folder is added as one more layer.
 async function useSource(src) {
-  toast("Citesc folderul…");
+  toast("Reading the folder…");
   const mods = await ModData.scanGame(src);
-  if (mods) { S.game = { src, mods }; S.tab = "mods"; render(); toast(`Am găsit ${mods.length} mod-uri. Bifează-le pe cele cu care joci.`, 4000); return; }
+  if (mods) { S.game = { src, mods }; S.tab = "mods"; render(); toast(`Found ${mods.length} mods. Tick the ones you play with.`, 4000); return; }
   D.folders.push(src); await afterFolders();
 }
 function savedMods() { try { return JSON.parse(localStorage.getItem("v2se.mods") || "[]"); } catch { return []; } }
@@ -211,10 +211,10 @@ async function applyMods(chosen) {
   await afterFolders();
 }
 async function afterFolders() {
-  toast("Citesc datele…");
-  await ModData.reload((what) => { $("#status").textContent = "Citesc " + what + "…"; });
+  toast("Reading the data…");
+  await ModData.reload((what) => { $("#status").textContent = "Reading " + what + "…"; });
   ModData.remember();
-  toast(`Date: ${fmt(D.cultures.size)} culturi, ${fmt(D.religions.size)} religii, ${D.poptypes.length} tipuri de pop, ${fmt(D.loc.size)} texte`);
+  toast(`Data: ${fmt(D.cultures.size)} cultures, ${fmt(D.religions.size)} religions, ${D.poptypes.length} pop types, ${fmt(D.loc.size)} texts`);
   status(); render();
 }
 async function restoreFolders() {
@@ -252,22 +252,22 @@ async function saveAs() {
     try {
       const h = await showSaveFilePicker({ suggestedName: base + "_edit.v2", types: [{ description: "Victoria II save", accept: { "text/plain": [".v2"] } }] });
       await writeTo(h); S.handle = h; S.save.name = h.name; S.save.dirty = false; S.save.undo = []; status(); toast("Salvat: " + h.name);
-    } catch (e) { if (e.name !== "AbortError") toast("Eroare la salvare: " + e.message); }
+    } catch (e) { if (e.name !== "AbortError") toast("Save error: " + e.message); }
   } else {
     const blob = new Blob([V2.strToBytes(S.save.text())], { type: "application/octet-stream" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = base + "_edit.v2"; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast("Descărcat " + a.download + " — mută-l în folderul save games");
+    toast("Downloaded " + a.download + " — move it into your save games folder");
   }
 }
 async function saveOver() {
   if (!S.handle) return saveAs();
-  if (!confirm(`Suprascriu ${S.save.name}? Fișierul vechi se pierde.`)) return;
+  if (!confirm(`Overwrite ${S.save.name}? The old file is lost.`)) return;
   try {
     const perm = await S.handle.requestPermission({ mode: "readwrite" });
-    if (perm !== "granted") return toast("Fără permisiune de scriere");
+    if (perm !== "granted") return toast("No write permission");
     await writeTo(S.handle); S.save.dirty = false; S.save.undo = []; status(); toast("Salvat peste " + S.save.name);
-  } catch (e) { toast("Eroare la salvare: " + e.message); }
+  } catch (e) { toast("Save error: " + e.message); }
 }
 window.addEventListener("beforeunload", (e) => { if (S.save && S.save.dirty) { e.preventDefault(); e.returnValue = ""; } });
 
@@ -276,7 +276,7 @@ function did(changed, msg) {
   if (changed) { S.owners = S.save.ownersIndex(); S.allProv = S.save.allProvinces(); S.ver = (S.ver || 0) + 1; }
   status(); render(); if (msg) toast(msg);
 }
-function undo() { const u = S.save.undoLast(); if (u) did(true, "Anulat: " + (u.label || "modificare")); }
+function undo() { const u = S.save.undoLast(); if (u) did(true, "Undone: " + (u.label || "change")); }
 
 // ---------- render ----------
 function render() {
@@ -284,11 +284,11 @@ function render() {
   const m = $("#main");
   if (S.tab === "mods") return (m.innerHTML = renderMods());
   if (!S.save) {
-    m.innerHTML = `<div class="empty"><h2>Deschide o salvare .v2</h2>
-      <p>Salvările sunt în <b>Documents\\Paradox Interactive\\Victoria II\\&lt;mod&gt;\\save games</b> (de ex. TGC sau GFM).</p>
-      <p>Merge cu orice mod. Ca să ai numele, culorile și harta mod-ului tău (TGC, GFM…), alege folderul jocului în tab-ul <b>Date mod</b> și bifează mod-urile.</p>
-      ${S.pendingFolders ? `<p><button id="bGrant">Folosește din nou folderele de data trecută</button></p>` : ""}
-      <p class="note">Totul rulează local în browser. Fișierul se modifică doar când apeși Salvează.</p></div>`;
+    m.innerHTML = `<div class="empty"><h2>Open a .v2 save</h2>
+      <p>Saves are in <b>Documents\\Paradox Interactive\\Victoria II\\&lt;mod&gt;\\save games</b> (e.g. TGC or GFM).</p>
+      <p>Works with any mod. For your mod's names, colours and map (TGC, GFM…), choose the game folder in the <b>Mod data</b> tab and tick your mods.</p>
+      ${S.pendingFolders ? `<p><button id="bGrant">Use the folders from last time again</button></p>` : ""}
+      <p class="note">Everything runs locally in your browser. The file only changes when you press Save.</p></div>`;
     const g = $("#bGrant"); if (g) g.onclick = grantFolders;
     return;
   }
@@ -304,20 +304,20 @@ function render() {
 function renderMods() {
   const f = D.folders, g = S.game;
   const chosen = new Set(g && f.length && !f[0].pack && f[0].name === "Victoria II" ? f.slice(1).map((x) => x.name) : savedMods());
-  const pick = g ? `<h3>Mod-uri găsite în ${esc(g.src.name)}</h3>
-    <p class="note">Bifează exact ce bifezi în launcher. Dependențele (de ex. TGC pentru un submod TGC) se adaugă singure.</p>
+  const pick = g ? `<h3>Mods found in ${esc(g.src.name)}</h3>
+    <p class="note">Tick exactly what you tick in the launcher. Dependencies (e.g. TGC for a TGC submod) are added automatically.</p>
     <div class="list" style="max-height:340px">${g.mods.slice().sort((a, b) => a.name.localeCompare(b.name)).map((m) =>
       `<label style="display:flex;gap:8px;padding:4px 6px"><input type="checkbox" data-mod="${esc(m.name)}" ${chosen.has(m.name) ? "checked" : ""}>
-        <span>${esc(m.name)} <small>${esc(m.path)}${m.deps.length ? " · cere " + esc(m.deps.join(", ")) : ""}${m.replace.length ? " · înlocuiește " + esc(m.replace.join(", ")) : ""}</small></span></label>`).join("")}</div>
-    <div class="row" style="margin-top:8px"><button class="primary" id="bUseMods">Folosește aceste mod-uri</button><button id="bVanilla">Doar jocul de bază</button></div>` : "";
-  return `<div class="panel"><h2>Date joc / mod</h2>
-    <p class="note">Ca editorul să știe culturile, religiile, numele provinciilor, culorile și harta mod-ului tău (TGC, GFM sau oricare), alege <b>folderul jocului</b> (<b>Victoria 2</b>, cel cu v2game.exe), apoi bifează mod-urile. Editorul le combină exact ca jocul: fișierele mod-ului le înlocuiesc pe cele ale jocului, iar <i>replace_path</i> e respectat.</p>
-    <p class="note">Pentru <b>Program Files</b> folosește „metoda clasică”: browserul întreabă dacă încarci fișierele, dar ele rămân pe calculatorul tău. Până alegi, editorul arată numele interne (polish, catholic) și nu are hartă.</p>
-    <div class="row"><button class="primary" id="bClassic">Alege folderul jocului (metoda clasică)</button><button id="bMod2">Alege folder (acces direct)</button>${typeof BUILTIN_PACK !== "undefined" && !f.some((x) => x.pack) ? `<button id="bPack">Adaugă pachetul TGC inclus</button>` : ""}${S.pendingFolders ? `<button id="bGrant2">Folosește folderele de data trecută</button>` : ""}</div>
+        <span>${esc(m.name)} <small>${esc(m.path)}${m.deps.length ? " · needs " + esc(m.deps.join(", ")) : ""}${m.replace.length ? " · replaces " + esc(m.replace.join(", ")) : ""}</small></span></label>`).join("")}</div>
+    <div class="row" style="margin-top:8px"><button class="primary" id="bUseMods">Use these mods</button><button id="bVanilla">Base game only</button></div>` : "";
+  return `<div class="panel"><h2>Game / mod data</h2>
+    <p class="note">For the editor to know the cultures, religions, province names, colours and map of your mod (TGC, GFM or any other), choose the <b>game folder</b> (<b>Victoria 2</b>, the one with v2game.exe), then tick your mods. The editor layers them exactly like the game: mod files replace the game's, and <i>replace_path</i> is honoured.</p>
+    <p class="note">For <b>Program Files</b> use the classic method: the browser asks whether to upload the files, but they stay on your computer. Until you choose, the editor shows internal names (polish, catholic) and has no map.</p>
+    <div class="row"><button class="primary" id="bClassic">Choose the game folder (classic)</button><button id="bMod2">Choose folder (direct access)</button>${typeof BUILTIN_PACK !== "undefined" && !f.some((x) => x.pack) ? `<button id="bPack">Add the built-in TGC pack</button>` : ""}${S.pendingFolders ? `<button id="bGrant2">Use the folders from last time</button>` : ""}</div>
     ${pick}
-    <h3>În uz acum (de jos în sus, ultimul câștigă)</h3>
-    ${f.length ? `<ol>${f.map((x, i) => `<li>${esc(x.name)}${x.replace && x.replace.length ? ` <small class="muted">înlocuiește ${esc(x.replace.join(", "))}</small>` : ""} <button class="small" data-rmf="${i}">scoate</button></li>`).join("")}</ol>` : `<p class="muted">Nimic. Editorul merge și așa, cu numele luate din salvare.</p>`}
-    <p>${fmt(D.cultures.size)} culturi în ${fmt(D.groups.size)} grupuri · ${fmt(D.religions.size)} religii · ${D.poptypes.length} tipuri de pop · ${fmt(D.loc.size)} texte · ${fmt(D.tagColors.size)} culori de țări · hartă: ${D.mapSource ? esc(D.mapSource.name) : "nu"}</p></div>`;
+    <h3>In use now (bottom to top, the last one wins)</h3>
+    ${f.length ? `<ol>${f.map((x, i) => `<li>${esc(x.name)}${x.replace && x.replace.length ? ` <small class="muted">replaces ${esc(x.replace.join(", "))}</small>` : ""} <button class="small" data-rmf="${i}">remove</button></li>`).join("")}</ol>` : `<p class="muted">Nothing. The editor still works, with the names taken from the save.</p>`}
+    <p>${fmt(D.cultures.size)} cultures in ${fmt(D.groups.size)} groups · ${fmt(D.religions.size)} religions · ${D.poptypes.length} pop types · ${fmt(D.loc.size)} texts · ${fmt(D.tagColors.size)} country colours · map: ${D.mapSource ? esc(D.mapSource.name) : "no"}</p></div>`;
 }
 
 // ---- countries ----
@@ -327,14 +327,14 @@ function renderCountries() {
     .sort((a, b) => (S.owners.get(b)?.people || 0) - (S.owners.get(a)?.people || 0));
   const list = rows.slice(0, 800).map((t) => `<div data-c="${t}" class="${t === S.country ? "on" : ""}"><span>${esc(cname(t))} <small>${t}</small></span><small>${S.owners.has(t) ? fmt(S.owners.get(t).people) : "–"}</small></div>`).join("");
   return `<div class="split"><div class="panel">
-    <input id="qC" placeholder="Caută țară (nume sau tag)" value="${esc(S.qC)}" style="width:100%">
-    <label class="note"><input type="checkbox" id="dead" ${S.showDead ? "checked" : ""}> arată și țările fără provincii</label>
-    <div class="list">${list || '<p class="muted">Nimic găsit</p>'}</div></div>
-    <div class="panel">${S.country && sv.countries.has(S.country) ? countryDetail(S.country) : '<p class="muted">Alege o țară.</p>'}</div></div>${datalists()}`;
+    <input id="qC" placeholder="Search country (name or tag)" value="${esc(S.qC)}" style="width:100%">
+    <label class="note"><input type="checkbox" id="dead" ${S.showDead ? "checked" : ""}> also show countries without provinces</label>
+    <div class="list">${list || '<p class="muted">Nothing found</p>'}</div></div>
+    <div class="panel">${S.country && sv.countries.has(S.country) ? countryDetail(S.country) : '<p class="muted">Choose a country.</p>'}</div></div>${datalists()}`;
 }
-const CFIELDS = [["money", "Bani"], ["prestige", "Prestigiu"], ["badboy", "Infamie"], ["research_points", "Puncte cercetare"],
-  ["leadership", "Leadership"], ["plurality", "Pluralitate"], ["revanchism", "Revanșism"], ["diplomatic_points", "Puncte diplomatice"],
-  ["suppression", "Suprimare"], ["capital", "Capitala (ID provincie)"], ["civilized", "Civilizată (yes/no)"], ["tax_base", "Bază impozitare"]];
+const CFIELDS = [["money", "Money"], ["prestige", "Prestige"], ["badboy", "Infamy"], ["research_points", "Research points"],
+  ["leadership", "Leadership"], ["plurality", "Plurality"], ["revanchism", "Revanchism"], ["diplomatic_points", "Diplomatic points"],
+  ["suppression", "Suppression"], ["capital", "Capital (province id)"], ["civilized", "Civilized (yes/no)"], ["tax_base", "Tax base"]];
 function countryDetail(tag) {
   const c = S.save.country(tag), o = S.owners.get(tag);
   const sc = Object.fromEntries(c.scalars.map((n) => [n.k, n]));
@@ -344,26 +344,26 @@ function countryDetail(tag) {
   for (const p of provs) for (const x of p.pops) cult.set(x.culture, (cult.get(x.culture) || 0) + x.size);
   const top = [...cult].sort((a, b) => b[1] - a[1]).slice(0, 12);
   return `<h2>${esc(cname(tag))} <span class="muted">${tag}</span></h2>
-    <p class="note">${o ? `${fmt(o.provinces)} provincii · ${fmt(o.pops)} pop-uri · ${fmt(o.people)} oameni` : "Nu deține provincii"}${tag === S.save.player ? " · țara jucătorului" : ""}</p>
-    <h3>Cultură și religie</h3>
+    <p class="note">${o ? `${fmt(o.provinces)} provinces · ${fmt(o.pops)} pops · ${fmt(o.people)} people` : "Owns no provinces"}${tag === S.save.player ? " · player country" : ""}</p>
+    <h3>Culture and religion</h3>
     <div class="grid">
-      <label>Cultura principală<input data-cf="primary_culture" list="dlCul" value="${esc(c.primary)}"></label>
-      <label>Religia de stat<input data-cf="religion" list="dlRel" value="${esc(c.religion)}"></label>
+      <label>Primary culture<input data-cf="primary_culture" list="dlCul" value="${esc(c.primary)}"></label>
+      <label>State religion<input data-cf="religion" list="dlRel" value="${esc(c.religion)}"></label>
     </div>
-    <h3>Culturi acceptate</h3>
-    <div class="chips">${c.accepted.map((a) => `<span class="chip">${esc(culName(a))}<button title="Scoate" data-unacc="${esc(a)}">×</button></span>`).join("") || '<span class="muted">niciuna</span>'}
-      <input id="accIn" list="dlCul" placeholder="adaugă cultură" style="width:180px"><button class="small" id="accAdd">Adaugă</button></div>
+    <h3>Accepted cultures</h3>
+    <div class="chips">${c.accepted.map((a) => `<span class="chip">${esc(culName(a))}<button title="Remove" data-unacc="${esc(a)}">×</button></span>`).join("") || '<span class="muted">none</span>'}
+      <input id="accIn" list="dlCul" placeholder="add culture" style="width:180px"><button class="small" id="accAdd">Add</button></div>
     <h3>Valori</h3>
     <div class="grid">${CFIELDS.map(([k, l]) => fld(k, l)).join("")}</div>
-    <h3>Cele mai mari culturi din țară</h3>
-    <table><tr><th>Cultură</th><th class="num">Oameni</th><th class="num">%</th></tr>
-    ${top.map(([k, v]) => `<tr><td>${esc(culName(k))}${k === c.primary ? " · principală" : c.accepted.includes(k) ? " · acceptată" : ""}</td><td class="num">${fmt(v)}</td><td class="num">${o && o.people ? ((100 * v) / o.people).toFixed(1) : ""}</td></tr>`).join("")}</table>
-    <h3>Provincii (${provs.length})</h3>
+    <h3>Largest cultures in the country</h3>
+    <table><tr><th>Culture</th><th class="num">People</th><th class="num">%</th></tr>
+    ${top.map(([k, v]) => `<tr><td>${esc(culName(k))}${k === c.primary ? " · primary" : c.accepted.includes(k) ? " · accepted" : ""}</td><td class="num">${fmt(v)}</td><td class="num">${o && o.people ? ((100 * v) / o.people).toFixed(1) : ""}</td></tr>`).join("")}</table>
+    <h3>Provinces (${provs.length})</h3>
     <div class="chips">${provs.slice(0, 300).map((p) => `<button class="small" data-goto="${p.id}">${esc(pname(p))} <span class="muted">${p.id}</span></button>`).join("")}${provs.length > 300 ? " …" : ""}</div>
-    <details><summary>Toate câmpurile simple ale țării (${c.scalars.length})</summary>
+    <details><summary>All simple fields of the country (${c.scalars.length})</summary>
       <div class="tablewrap"><table><tr><th>Cheie</th><th>Valoare</th></tr>
       ${c.scalars.map((n, i) => `<tr><td>${esc(n.k)}</td><td><input data-cs="${i}" value="${esc(V(n.v))}"></td></tr>`).join("")}</table></div>
-      <p class="note">Cheile care apar de mai multe ori (de ex. <i>active_party</i>) se editează pe rând. Pentru blocuri folosește Text brut.</p></details>`;
+      <p class="note">Keys that appear more than once (e.g. <i>active_party</i>) are edited one by one. For blocks use Raw text.</p></details>`;
 }
 
 // ---- provinces ----
@@ -372,30 +372,30 @@ function renderProvinces() {
   const rows = S.allProv.filter((p) => !q || String(p.id) === q || pname(p).toLowerCase().includes(q) || p.owner.toLowerCase() === q);
   const list = rows.slice(0, 800).map((p) => `<div data-p="${p.id}" class="${p.id === S.province ? "on" : ""}"><span>${esc(pname(p))} <small>${p.id}</small></span><small>${p.owner || "–"}</small></div>`).join("");
   return `<div class="split"><div class="panel">
-    <input id="qP" placeholder="ID, nume sau tag proprietar" value="${esc(S.qP)}" style="width:100%">
-    <div class="note">${fmt(rows.length)} provincii${rows.length > 800 ? " (primele 800)" : ""}</div>
+    <input id="qP" placeholder="Id, name or owner tag" value="${esc(S.qP)}" style="width:100%">
+    <div class="note">${fmt(rows.length)} provinces${rows.length > 800 ? " (first 800)" : ""}</div>
     <div class="list">${list}</div></div>
-    <div class="panel">${S.province ? provinceDetail(S.province) : '<p class="muted">Alege o provincie.</p>'}</div></div>${datalists()}`;
+    <div class="panel">${S.province ? provinceDetail(S.province) : '<p class="muted">Choose a province.</p>'}</div></div>${datalists()}`;
 }
 function provinceDetail(id) {
   const p = S.save.province(id);
-  if (!p) return '<p class="muted">Provincie inexistentă.</p>';
+  if (!p) return '<p class="muted">No such province.</p>';
   const people = p.pops.reduce((a, x) => a + x.size, 0);
   const types = knownTypes();
   const tsel = (cur, attr) => `<select ${attr}>${[...new Set([cur, ...types])].map((t) => `<option ${t === cur ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
   const f = (pop, k) => (pop.fields[k] ? V2.unq(pop.fields[k].v) : "");
   return `<h2>${esc(pname(p))} <span class="muted">#${p.id}</span></h2>
-    <p class="note">${p.pops.length} pop-uri · ${fmt(people)} oameni</p>
+    <p class="note">${p.pops.length} pops · ${fmt(people)} people</p>
     <div class="grid">
-      <label>Proprietar<input data-pt="owner" list="dlTag" value="${esc(p.owner)}"></label>
-      <label>Controlor<input data-pt="controller" list="dlTag" value="${esc(p.controller)}"></label>
+      <label>Owner<input data-pt="owner" list="dlTag" value="${esc(p.owner)}"></label>
+      <label>Controller<input data-pt="controller" list="dlTag" value="${esc(p.controller)}"></label>
     </div>
-    <p class="note warn">Schimbarea proprietarului direct în salvare nu mută provincia în state-ul altei țări. Pentru asta folosește în joc comanda <code>changeowner TAG ${p.id}</code>.</p>
+    <p class="note warn">Changing the owner directly in the save does not move the province into the other country's state. For that use the in-game command <code>changeowner TAG ${p.id}</code>.</p>
     <h3>Core-uri</h3>
-    <div class="chips">${p.cores.map((c) => `<span class="chip">${esc(cname(c.tag))} ${c.tag}<button data-rmcore="${c.tag}" title="Scoate">×</button></span>`).join("") || '<span class="muted">niciunul</span>'}
-      <input id="coreIn" list="dlTag" placeholder="TAG" style="width:90px"><button class="small" id="coreAdd">Adaugă</button></div>
-    <h3>Pop-uri</h3>
-    <div class="tablewrap"><table><tr><th>ID</th><th>Tip</th><th>Cultură</th><th>Religie</th><th class="num">Mărime</th><th class="num">Bani</th><th class="num">Alfabetizare</th><th class="num">Militanță</th><th class="num">Conștiință</th><th></th></tr>
+    <div class="chips">${p.cores.map((c) => `<span class="chip">${esc(cname(c.tag))} ${c.tag}<button data-rmcore="${c.tag}" title="Remove">×</button></span>`).join("") || '<span class="muted">none</span>'}
+      <input id="coreIn" list="dlTag" placeholder="TAG" style="width:90px"><button class="small" id="coreAdd">Add</button></div>
+    <h3>Pops</h3>
+    <div class="tablewrap"><table><tr><th>ID</th><th>Type</th><th>Culture</th><th>Religion</th><th class="num">Size</th><th class="num">Money</th><th class="num">Literacy</th><th class="num">Militancy</th><th class="num">Consciousness</th><th></th></tr>
     ${p.pops.map((pop, i) => `<tr data-pop="${i}">
       <td class="muted">${pop.id}</td>
       <td>${tsel(pop.type, 'data-pf="type"')}</td>
@@ -406,40 +406,40 @@ function provinceDetail(id) {
       <td><input data-pf="literacy" value="${esc(f(pop, "literacy"))}"></td>
       <td><input data-pf="mil" value="${esc(f(pop, "mil"))}"></td>
       <td><input data-pf="con" value="${esc(f(pop, "con"))}"></td>
-      <td><button class="small" data-clone="${i}" title="Copiază pop-ul">+</button> <button class="small" data-del="${i}" title="Șterge pop-ul">×</button></td></tr>`).join("")}
+      <td><button class="small" data-clone="${i}" title="Copy the pop">+</button> <button class="small" data-del="${i}" title="Delete the pop">×</button></td></tr>`).join("")}
     <tr><td></td><td colspan="3" class="muted">Total</td><td class="num">${fmt(people)}</td><td colspan="5"></td></tr></table></div>
-    <h3>Adaugă pop</h3>
+    <h3>Add pop</h3>
     <div class="row">
       ${tsel(types.includes("farmers") ? "farmers" : types[0], 'id="npType"')}
-      <input id="npCul" list="dlCul" placeholder="cultură" style="width:150px">
-      <input id="npRel" list="dlRel" placeholder="religie" style="width:130px">
-      <input id="npSize" placeholder="mărime" style="width:90px" value="1000">
-      <button id="npAdd" ${p.pops.length ? "" : "disabled"}>Adaugă</button>
+      <input id="npCul" list="dlCul" placeholder="culture" style="width:150px">
+      <input id="npRel" list="dlRel" placeholder="religion" style="width:130px">
+      <input id="npSize" placeholder="size" style="width:90px" value="1000">
+      <button id="npAdd" ${p.pops.length ? "" : "disabled"}>Add</button>
     </div>
-    <p class="note">Pop-ul nou e o copie a unui pop din provincie (de preferință de același tip), cu ID nou, fără loc de muncă. Joburile se împart din nou la următoarea zi de joc.</p>`;
+    <p class="note">The new pop is a copy of a pop of the province (preferably of the same type) with a new id and no job. Jobs are redistributed on the next game day.</p>`;
 }
 
 // ---- bulk ----
 function renderBulk() {
   const b = S.bulk || (S.bulk = { scope: "owner", target: S.country || "", fc: "", fr: "", ft: "", sc: "", sr: "" });
-  return `<div class="panel"><h2>Conversie în masă</h2>
-    <p class="note">Schimbă cultura și/sau religia tuturor pop-urilor care se potrivesc cu filtrele. Câmpurile goale nu filtrează / nu se schimbă.</p>
+  return `<div class="panel"><h2>Bulk conversion</h2>
+    <p class="note">Changes the culture and/or religion of every pop matching the filters. Empty fields do not filter / are not changed.</p>
     <div class="grid">
-      <label>Unde<select id="bScope"><option value="owner" ${b.scope === "owner" ? "selected" : ""}>provinciile unei țări</option><option value="ids" ${b.scope === "ids" ? "selected" : ""}>anumite provincii (ID-uri)</option><option value="all" ${b.scope === "all" ? "selected" : ""}>toată lumea</option></select></label>
-      <label>${b.scope === "ids" ? "ID-uri (separate prin spațiu sau virgulă)" : "Tag țară"}<input id="bTarget" ${b.scope === "owner" ? 'list="dlTag"' : ""} value="${esc(b.target)}" ${b.scope === "all" ? "disabled" : ""}></label>
+      <label>Where<select id="bScope"><option value="owner" ${b.scope === "owner" ? "selected" : ""}>a country's provinces</option><option value="ids" ${b.scope === "ids" ? "selected" : ""}>some provinces (ids)</option><option value="all" ${b.scope === "all" ? "selected" : ""}>the whole world</option></select></label>
+      <label>${b.scope === "ids" ? "Ids (separated by space or comma)" : "Country tag"}<input id="bTarget" ${b.scope === "owner" ? 'list="dlTag"' : ""} value="${esc(b.target)}" ${b.scope === "all" ? "disabled" : ""}></label>
     </div>
-    <h3>Doar pop-urile cu</h3>
+    <h3>Only pops with</h3>
     <div class="grid">
-      <label>Cultura<input id="bFc" list="dlCul" value="${esc(b.fc)}"></label>
-      <label>Religia<input id="bFr" list="dlRel" value="${esc(b.fr)}"></label>
-      <label>Tipul<input id="bFt" list="dlType" value="${esc(b.ft)}"></label>
+      <label>Culture<input id="bFc" list="dlCul" value="${esc(b.fc)}"></label>
+      <label>Religion<input id="bFr" list="dlRel" value="${esc(b.fr)}"></label>
+      <label>Type<input id="bFt" list="dlType" value="${esc(b.ft)}"></label>
     </div>
-    <h3>Devin</h3>
+    <h3>Become</h3>
     <div class="grid">
-      <label>Cultura nouă<input id="bSc" list="dlCul" value="${esc(b.sc)}"></label>
-      <label>Religia nouă<input id="bSr" list="dlRel" value="${esc(b.sr)}"></label>
+      <label>New culture<input id="bSc" list="dlCul" value="${esc(b.sc)}"></label>
+      <label>New religion<input id="bSr" list="dlRel" value="${esc(b.sr)}"></label>
     </div>
-    <div class="row" style="margin-top:12px"><button id="bPreview">Previzualizează</button><button class="primary" id="bApply">Aplică</button><span id="bOut" class="note"></span></div>
+    <div class="row" style="margin-top:12px"><button id="bPreview">Preview</button><button class="primary" id="bApply">Apply</button><span id="bOut" class="note"></span></div>
     <datalist id="dlType">${knownTypes().map((t) => `<option value="${esc(t)}">`).join("")}</datalist></div>${datalists()}`;
 }
 function bulkArgs() {
@@ -470,17 +470,17 @@ function renderRaw() {
   const k = S.rawKey;
   const i = k ? (/^\d+$/.test(k) ? S.save.provinces.get(+k) : S.save.countries.get(k.toUpperCase()) ?? S.save.top.get(k)) : undefined;
   const txt = i !== undefined ? S.save.segs[i].text : "";
-  return `<div class="panel"><h2>Text brut</h2>
-    <p class="note">Editezi direct textul unui bloc din salvare: ID de provincie (552), tag de țară (GER) sau orice cheie de pe primul nivel (de ex. <i>start_pop_index</i>). Pentru utilizatori avansați.</p>
-    <div class="row"><input id="rawKey" value="${esc(k)}" placeholder="552 / GER / cheie"><button id="rawLoad">Deschide</button>
-      ${i !== undefined ? `<span class="note">${fmt(txt.length)} caractere</span>` : k ? '<span class="bad">Cheie negăsită</span>' : ""}</div>
+  return `<div class="panel"><h2>Raw text</h2>
+    <p class="note">Edit the text of one block of the save directly: a province id (552), a country tag (GER) or any top-level key (e.g. <i>start_pop_index</i>). For advanced users.</p>
+    <div class="row"><input id="rawKey" value="${esc(k)}" placeholder="552 / GER / key"><button id="rawLoad">Open</button>
+      ${i !== undefined ? `<span class="note">${fmt(txt.length)} characters</span>` : k ? '<span class="bad">Key not found</span>' : ""}</div>
     ${i !== undefined ? `<textarea class="raw" id="rawText" spellcheck="false">${esc(V(txt))}</textarea>
-      <div class="row"><button class="primary" id="rawApply" data-seg="${i}">Aplică</button><span id="rawOut" class="note"></span></div>` : ""}</div>`;
+      <div class="row"><button class="primary" id="rawApply" data-seg="${i}">Apply</button><span id="rawOut" class="note"></span></div>` : ""}</div>`;
 }
 
 
 // ---------- map ----------
-const MODES = [["political", "Politic (proprietar)"], ["controller", "Controlor"], ["culture", "Cultura majoritară"], ["religion", "Religia majoritară"], ["population", "Populație"]];
+const MODES = [["political", "Political (owner)"], ["controller", "Controller"], ["culture", "Majority culture"], ["religion", "Majority religion"], ["population", "Population"]];
 function hashColor(s) { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
   const hue = (h >>> 0) % 360, sat = 45 + ((h >>> 9) % 25), lig = 45 + ((h >>> 17) % 20); return hsl(hue, sat, lig); }
 function hsl(hh, s, l) { s /= 100; l /= 100; const k = (n) => (n + hh / 30) % 12, a = s * Math.min(l, 1 - l);
@@ -526,10 +526,10 @@ function modeColor(mode) {
 }
 function mapTooltip(id) {
   const v = provInfo().get(id);
-  if (MapView.geo.sea.has(id)) return `<b>${esc(ModData.name("PROV" + id) || "Mare")}</b> <span class="muted">#${id}</span>`;
-  if (!v) return `<b>${esc(ModData.name("PROV" + id) || "#" + id)}</b><br><span class="muted">fără date în salvare</span>`;
+  if (MapView.geo.sea.has(id)) return `<b>${esc(ModData.name("PROV" + id) || "Sea")}</b> <span class="muted">#${id}</span>`;
+  if (!v) return `<b>${esc(ModData.name("PROV" + id) || "#" + id)}</b><br><span class="muted">no data in the save</span>`;
   const p = v.p;
-  return `<b>${esc(pname(p))}</b> <span class="muted">#${id}</span><br>${p.owner ? esc(cname(p.owner)) + " (" + p.owner + ")" : "nelocuită / necolonizată"}${p.controller && p.controller !== p.owner ? `<br>ocupată de ${esc(cname(p.controller))}` : ""}<br>${fmt(v.people)} oameni${v.culture ? " · " + esc(ModData.name(v.culture) || v.culture) : ""}${v.religion ? " · " + esc(ModData.name(v.religion) || v.religion) : ""}`;
+  return `<b>${esc(pname(p))}</b> <span class="muted">#${id}</span><br>${p.owner ? esc(cname(p.owner)) + " (" + p.owner + ")" : "uninhabited / uncolonised"}${p.controller && p.controller !== p.owner ? `<br>occupied by ${esc(cname(p.controller))}` : ""}<br>${fmt(v.people)} people${v.culture ? " · " + esc(ModData.name(v.culture) || v.culture) : ""}${v.religion ? " · " + esc(ModData.name(v.religion) || v.religion) : ""}`;
 }
 async function renderMap() {
   const m = $("#main");
@@ -537,20 +537,20 @@ async function renderMap() {
     if (S.mapView) { S.mapView.destroy(); S.mapView = null; }
     m.innerHTML = `<div class="mapwrap"><div><div class="row" style="margin-bottom:8px">
         <select id="mapMode">${MODES.map(([k, l]) => `<option value="${k}" ${k === (S.mapMode || "political") ? "selected" : ""}>${l}</option>`).join("")}</select>
-        <input id="mapFind" placeholder="Caută provincie (nume sau ID)" style="width:220px"><button id="mapGo">Găsește</button>
-        <span class="note">Rotița = zoom · trage = mută · click = detalii</span></div>
-      <div id="mapHost"><div class="maploading">Se încarcă harta…</div></div></div>
+        <input id="mapFind" placeholder="Search province (name or id)" style="width:220px"><button id="mapGo">Find</button>
+        <span class="note">Wheel = zoom · drag = move · click = details</span></div>
+      <div id="mapHost"><div class="maploading">Loading the map…</div></div></div>
       <div class="panel mapside" id="mapSide"></div></div>`;
     $("#mapMode").onchange = () => { S.mapMode = $("#mapMode").value; S.mapCache = null; renderMap(); };
     const find = () => {
       const q = $("#mapFind").value.trim().toLowerCase(); if (!q) return;
       const p = S.allProv.find((x) => String(x.id) === q) || S.allProv.find((x) => pname(x).toLowerCase() === q) || S.allProv.find((x) => pname(x).toLowerCase().includes(q));
-      if (!p) return toast("Nu am găsit provincia");
+      if (!p) return toast("Province not found");
       S.mapSel = p.id; S.mapView && (S.mapView.select(p.id), S.mapView.centerOn(p.id, true)); mapSide();
     };
     $("#mapGo").onclick = find; $("#mapFind").onkeydown = (e) => e.key === "Enter" && find();
     try { await MapView.load(D.mapSource); }
-    catch (e) { $("#mapHost").innerHTML = `<div class="maploading"><div style="text-align:center;padding:16px">${esc(e.message)}<br><br>Harta vine din folderul jocului sau al mod-ului (map/provinces.bmp): alege-l în tab-ul <b>Date mod</b>.</div></div>`; return; }
+    catch (e) { $("#mapHost").innerHTML = `<div class="maploading"><div style="text-align:center;padding:16px">${esc(e.message)}<br><br>The map comes from the game or mod folder (map/provinces.bmp): choose it in the <b>Mod data</b> tab.</div></div>`; return; }
     if (S.tab !== "map" || !$("#mapHost")) return;
     S.mapView = new MapView.View($("#mapHost"), { state: S.mapState, tooltip: mapTooltip,
       onClick: (id, e) => { S.mapSel = id; S.mapView.select(id); mapSide(); if (e.detail === 2) { S.province = id; S.tab = "provinces"; S.qP = ""; render(); } } });
@@ -577,13 +577,13 @@ function mapSide() {
     const bars = (mp, nm) => [...mp].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, n]) =>
       `<div style="margin:4px 0"><div class="row" style="justify-content:space-between"><span>${esc(nm(k))}</span><span class="muted">${v.people ? ((100 * n) / v.people).toFixed(1) : 0}%</span></div><div class="bar" style="width:${v.people ? (100 * n) / v.people : 0}%"></div></div>`).join("");
     html += `<h2>${esc(pname(p))} <span class="muted">#${p.id}</span></h2>
-      <p class="note">${p.owner ? `${esc(cname(p.owner))} ${p.owner}` : "Fără proprietar"}${p.controller && p.controller !== p.owner ? ` · ocupată de ${esc(cname(p.controller))}` : ""}<br>${p.pops.length} pop-uri · ${fmt(v.people)} oameni<br>Core-uri: ${p.cores.map((c) => c.tag).join(", ") || "–"}</p>
-      <div class="row"><button class="small primary" id="msEdit">Editează provincia</button>${p.owner ? `<button class="small" id="msCountry">Țara ${p.owner}</button>` : ""}</div>
-      <h3>Culturi</h3>${bars(v.cu, (k) => ModData.name(k) || k)}<h3>Religii</h3>${bars(v.re, (k) => ModData.name(k) || k)}`;
-  } else if (S.mapSel) html += `<h2>#${S.mapSel}</h2><p class="muted">${MapView.geo && MapView.geo.sea.has(S.mapSel) ? "Mare" : "Fără date în salvare"}</p>`;
-  else html += `<p class="muted">Click pe o provincie pentru detalii. Dublu-click o deschide în editor.</p>`;
-  if (mode === "population") html += `<h3>Legendă</h3><div class="legend"><div><span class="sw" style="background:${cssOf(hsl(28, 70, 92))}"></span>puțini</div><div><span class="sw" style="background:${cssOf(hsl(10, 70, 30))}"></span>${fmt(S.mapCache ? S.mapCache.maxPeople : 0)} (maxim)</div></div>`;
-  else if (lg.length) html += `<h3>Cele mai mari (după oameni)</h3><div class="legend">${lg.map(([k, u]) => `<div><span class="sw" style="background:${cssOf(u.c)}"></span>${lname(k)} <span class="muted" style="margin-left:auto">${fmt(u.n)}</span></div>`).join("")}</div>`;
+      <p class="note">${p.owner ? `${esc(cname(p.owner))} ${p.owner}` : "No owner"}${p.controller && p.controller !== p.owner ? ` · occupied by ${esc(cname(p.controller))}` : ""}<br>${p.pops.length} pops · ${fmt(v.people)} people<br>Cores: ${p.cores.map((c) => c.tag).join(", ") || "–"}</p>
+      <div class="row"><button class="small primary" id="msEdit">Edit the province</button>${p.owner ? `<button class="small" id="msCountry">Country ${p.owner}</button>` : ""}</div>
+      <h3>Cultures</h3>${bars(v.cu, (k) => ModData.name(k) || k)}<h3>Religions</h3>${bars(v.re, (k) => ModData.name(k) || k)}`;
+  } else if (S.mapSel) html += `<h2>#${S.mapSel}</h2><p class="muted">${MapView.geo && MapView.geo.sea.has(S.mapSel) ? "Sea" : "No data in the save"}</p>`;
+  else html += `<p class="muted">Click a province for details. Double-click opens it in the editor.</p>`;
+  if (mode === "population") html += `<h3>Legend</h3><div class="legend"><div><span class="sw" style="background:${cssOf(hsl(28, 70, 92))}"></span>few</div><div><span class="sw" style="background:${cssOf(hsl(10, 70, 30))}"></span>${fmt(S.mapCache ? S.mapCache.maxPeople : 0)} (max)</div></div>`;
+  else if (lg.length) html += `<h3>Largest (by people)</h3><div class="legend">${lg.map(([k, u]) => `<div><span class="sw" style="background:${cssOf(u.c)}"></span>${lname(k)} <span class="muted" style="margin-left:auto">${fmt(u.n)}</span></div>`).join("")}</div>`;
   el.innerHTML = html;
   const e1 = $("#msEdit"); if (e1) e1.onclick = () => { S.province = S.mapSel; S.tab = "provinces"; S.qP = ""; render(); };
   const e2 = $("#msCountry"); if (e2) e2.onclick = () => { S.country = provInfo().get(S.mapSel).p.owner; S.tab = "countries"; render(); };
@@ -604,9 +604,9 @@ function bind() {
     const c = () => S.save.country(S.country);
     m.querySelectorAll("[data-cf]").forEach((el) => (el.onchange = () => {
       const k = el.dataset.cf, v = el.value.trim();
-      if (k === "primary_culture" && !checkCulture(v)) return toast("Cultură necunoscută în datele mod-ului: " + v);
-      if (k === "religion" && !checkReligion(v)) return toast("Religie necunoscută: " + v);
-      if (!["primary_culture", "religion", "civilized"].includes(k) && !V2.isNum(v)) return toast("Trebuie un număr");
+      if (k === "primary_culture" && !checkCulture(v)) return toast("Culture unknown in the mod data: " + v);
+      if (k === "religion" && !checkReligion(v)) return toast("Unknown religion: " + v);
+      if (!["primary_culture", "religion", "civilized"].includes(k) && !V2.isNum(v)) return toast("A number is needed");
       did(S.save.setCountryScalar(c(), k, v), k + " = " + v);
     }));
     m.querySelectorAll("[data-cs]").forEach((el) => (el.onchange = () => {
@@ -614,8 +614,8 @@ function bind() {
       did(S.save.setScalar(cc.seg, n, V2.unq(el.value.trim()), cc.tag + "." + n.k), n.k + " schimbat");
     }));
     m.querySelectorAll("[data-unacc]").forEach((el) => (el.onclick = () => { const cc = c(); did(S.save.setAccepted(cc, cc.accepted.filter((x) => x !== el.dataset.unacc)), "Scos: " + el.dataset.unacc); }));
-    const add = () => { const v = $("#accIn").value.trim(); if (!v) return; if (!checkCulture(v)) return toast("Cultură necunoscută: " + v);
-      const cc = c(); did(S.save.setAccepted(cc, [...cc.accepted, v]), "Acceptată: " + v); };
+    const add = () => { const v = $("#accIn").value.trim(); if (!v) return; if (!checkCulture(v)) return toast("Unknown culture: " + v);
+      const cc = c(); did(S.save.setAccepted(cc, [...cc.accepted, v]), "Accepted: " + v); };
     $("#accAdd") && ($("#accAdd").onclick = add);
     $("#accIn") && ($("#accIn").onkeydown = (e) => e.key === "Enter" && add());
   }
@@ -625,39 +625,39 @@ function bind() {
     const p = () => S.save.province(S.province);
     m.querySelectorAll("[data-pt]").forEach((el) => (el.onchange = () => {
       const v = el.value.trim().toUpperCase();
-      if (!S.save.countries.has(v)) return toast("Tag necunoscut: " + v);
+      if (!S.save.countries.has(v)) return toast("Unknown tag: " + v);
       did(S.save.setProvinceTag(p(), el.dataset.pt, v), el.dataset.pt + " = " + v);
     }));
     m.querySelectorAll("[data-rmcore]").forEach((el) => (el.onclick = () => did(S.save.removeCore(p(), el.dataset.rmcore), "Core scos")));
-    const addCore = () => { const v = $("#coreIn").value.trim().toUpperCase(); if (!S.save.countries.has(v)) return toast("Tag necunoscut: " + v); did(S.save.addCore(p(), v), "Core adăugat: " + v); };
+    const addCore = () => { const v = $("#coreIn").value.trim().toUpperCase(); if (!S.save.countries.has(v)) return toast("Unknown tag: " + v); did(S.save.addCore(p(), v), "Core added: " + v); };
     $("#coreAdd") && ($("#coreAdd").onclick = addCore);
     m.querySelectorAll("[data-pf]").forEach((el) => (el.onchange = () => {
       const pp = p(); const pop = pp.pops[+el.closest("tr").dataset.pop]; const k = el.dataset.pf; const v = el.value.trim();
       try {
-        if (k === "culture" && !checkCulture(v)) return toast("Cultură necunoscută: " + v);
-        if (k === "religion" && !checkReligion(v)) return toast("Religie necunoscută: " + v);
+        if (k === "culture" && !checkCulture(v)) return toast("Unknown culture: " + v);
+        if (k === "religion" && !checkReligion(v)) return toast("Unknown religion: " + v);
         if (k === "type") { const r = S.save.structural(pp, () => S.save.popOps(pp, pop, { type: v })); return did(true, `Tip schimbat (${r.fixed} joburi reindexate, ${r.dropped} scoase)`); }
-        if (k === "size" && (!/^\d+$/.test(v) || +v < 1)) return toast("Mărimea trebuie să fie un număr întreg ≥ 1");
+        if (k === "size" && (!/^\d+$/.test(v) || +v < 1)) return toast("The size must be a whole number ≥ 1");
         did(S.save.popOps(pp, pop, { [k]: v }), "Pop " + pop.id + ": " + k);
       } catch (e) { toast(e.message); render(); }
     }));
     m.querySelectorAll("[data-del]").forEach((el) => (el.onclick = () => {
       const pp = p(); const pop = pp.pops[+el.dataset.del];
-      if (!confirm(`Șterg pop-ul ${pop.id} (${pop.type}, ${pop.culture}, ${fmt(pop.size)} oameni)?`)) return;
+      if (!confirm(`Delete pop ${pop.id} (${pop.type}, ${pop.culture}, ${fmt(pop.size)} people)?`)) return;
       const r = S.save.structural(pp, () => S.save.deletePops(pp, [pop]));
-      did(true, `Pop șters (${r.fixed} joburi reindexate, ${r.dropped} scoase)`);
+      did(true, `Pop deleted (${r.fixed} jobs reindexed, ${r.dropped} removed)`);
     }));
     m.querySelectorAll("[data-clone]").forEach((el) => (el.onclick = () => { const pp = p(); const pop = pp.pops[+el.dataset.clone]; const id = S.save.clonePop(pp, pop, {}); did(true, "Pop copiat, ID nou " + id); }));
     const np = $("#npAdd");
     if (np) np.onclick = () => {
       const pp = p(); const type = $("#npType").value, cul = $("#npCul").value.trim(), rel = $("#npRel").value.trim(), size = $("#npSize").value.trim();
-      if (!cul || !rel) return toast("Completează cultura și religia");
-      if (!checkCulture(cul)) return toast("Cultură necunoscută: " + cul);
-      if (!checkReligion(rel)) return toast("Religie necunoscută: " + rel);
-      if (!/^\d+$/.test(size) || +size < 1) return toast("Mărime invalidă");
+      if (!cul || !rel) return toast("Fill in the culture and religion");
+      if (!checkCulture(cul)) return toast("Unknown culture: " + cul);
+      if (!checkReligion(rel)) return toast("Unknown religion: " + rel);
+      if (!/^\d+$/.test(size) || +size < 1) return toast("Invalid size");
       const tpl = pp.pops.find((x) => x.type === type) || pp.pops[0];
       const id = S.save.clonePop(pp, tpl, { type, culture: cul, religion: rel, size: +size });
-      did(true, "Pop adăugat, ID " + id);
+      did(true, "Pop added, id " + id);
     };
   }
 
@@ -666,19 +666,19 @@ function bind() {
     const b = S.bulk;
     const sync = () => { b.target = $("#bTarget").value; b.fc = $("#bFc").value; b.fr = $("#bFr").value; b.ft = $("#bFt").value; b.sc = $("#bSc").value; b.sr = $("#bSr").value; };
     $("#bScope").onchange = () => { sync(); b.scope = $("#bScope").value; b.target = ""; render(); };
-    $("#bPreview").onclick = () => { sync(); const r = bulkPreview(); $("#bOut").textContent = `${fmt(r.pops)} pop-uri, ${fmt(r.people)} oameni, în ${fmt(r.provs)} provincii`; };
+    $("#bPreview").onclick = () => { sync(); const r = bulkPreview(); $("#bOut").textContent = `${fmt(r.pops)} pops, ${fmt(r.people)} people, in ${fmt(r.provs)} provinces`; };
     $("#bApply").onclick = () => {
       sync();
       const [scope, f, set] = bulkArgs();
-      if (!set.culture && !set.religion) return toast("Alege cultura sau religia nouă");
-      if (!checkCulture(set.culture)) return toast("Cultură necunoscută: " + set.culture);
-      if (!checkReligion(set.religion)) return toast("Religie necunoscută: " + set.religion);
+      if (!set.culture && !set.religion) return toast("Choose the new culture or religion");
+      if (!checkCulture(set.culture)) return toast("Unknown culture: " + set.culture);
+      if (!checkReligion(set.religion)) return toast("Unknown religion: " + set.religion);
       if (scope.owner && !S.save.countries.has(scope.owner)) return toast("Tag necunoscut");
       const pv = bulkPreview();
-      if (!pv.pops) return toast("Nimic de schimbat");
-      if (!confirm(`Convertesc ${fmt(pv.pops)} pop-uri (${fmt(pv.people)} oameni) în ${fmt(pv.provs)} provincii?`)) return;
+      if (!pv.pops) return toast("Nothing to change");
+      if (!confirm(`Convert ${fmt(pv.pops)} pops (${fmt(pv.people)} people) in ${fmt(pv.provs)} provinces?`)) return;
       const r = S.save.bulkConvert(scope, f, set);
-      did(true, `Convertite ${fmt(r.pops)} pop-uri în ${fmt(r.provs)} provincii`);
+      did(true, `Converted ${fmt(r.pops)} pops in ${fmt(r.provs)} provinces`);
     };
   }
 
@@ -692,9 +692,9 @@ function bind() {
       const orig = S.save.segs[i];
       let d = 0, inq = false;
       for (const ch of nt) { if (ch === '"') inq = !inq; else if (!inq) { if (ch === "{") d++; else if (ch === "}") { d--; if (d < 0) break; } } }
-      if (d !== 0) return ($("#rawOut").textContent = "Acolade neechilibrate (" + d + "), nu am aplicat.");
+      if (d !== 0) return ($("#rawOut").textContent = "Unbalanced braces (" + d + "), not applied.");
       const segs = V2.split(nt).filter((s) => s.key !== null);
-      if (segs.length !== 1 || segs[0].key !== orig.key) return ($("#rawOut").textContent = "Textul trebuie să rămână un singur bloc cu cheia " + orig.key + ".");
+      if (segs.length !== 1 || segs[0].key !== orig.key) return ($("#rawOut").textContent = "The text must stay a single block with the key " + orig.key + ".");
       if (!/\s$/.test(nt.slice(0, 1)) && orig.text[0] !== nt[0] && /^\s/.test(orig.text)) { /* keep leading newline */ }
       const lead = orig.text.match(/^\s*/)[0];
       const fixed = /^\s/.test(nt) ? nt : lead + nt;

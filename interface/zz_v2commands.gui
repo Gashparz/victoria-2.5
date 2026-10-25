@@ -23,7 +23,7 @@ guiTypes = {
 			position = { x = 1 y = 5 }
 			font = "vic_18_black_bold"
 			borderSize = { x = 0 y = 0 }
-			text = "COMENZI"
+			text = "COMMANDS"
 			maxWidth = 124
 			maxHeight = 32
 			format = centre
@@ -34,7 +34,7 @@ guiTypes = {
 			position = { x = 0 y = 4 }
 			font = "vic_18_headline"
 			borderSize = { x = 0 y = 0 }
-			text = "COMENZI"
+			text = "COMMANDS"
 			maxWidth = 124
 			maxHeight = 32
 			format = centre
@@ -45,7 +45,7 @@ guiTypes = {
 			position = { x = 0 y = 40 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
-			text = "consola"
+			text = "console"
 			maxWidth = 124
 			maxHeight = 16
 			format = centre
@@ -57,8 +57,8 @@ guiTypes = {
 	windowType = {
 		name = "v2cmd_window"
 		backGround = "Background"
-		position = { x = -360 y = -269 }
-		size = { x = 720 y = 538 }
+		position = { x = -360 y = -306 }
+		size = { x = 720 y = 612 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -81,7 +81,15 @@ guiTypes = {
 			name = "v2cmd_blocs"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 22 y = 12 }
-			buttonText = "Blocuri"
+			buttonText = "Blocs"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		guiButtonType = {
+			name = "v2cmd_treaty"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 520 y = 12 }
+			buttonText = "Treaties"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
@@ -92,7 +100,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 720
 			maxHeight = 30
-			text = "Comenzi de consola"
+			text = "Console commands"
 			format = centre
 			fixedsize = yes
 		}
@@ -103,7 +111,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 22
-			text = "Deschide consola cu tasta ~ si scrie comanda. Id provincie: showprovinceid, apoi mouse pe provincie."
+			text = "Open the console with ~ and type a command. Province ids: showprovinceid, then hover a province."
 			format = left
 			fixedsize = yes
 		}
@@ -114,7 +122,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 22
-			text = "POPULATIE"
+			text = "POPULATION"
 			format = left
 			fixedsize = yes
 		}
@@ -125,7 +133,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "convert_pop <prov> [cultura|-|owner] [religie|-|owner] [filtre]     schimba cultura/religia"
+			text = "convert_pop <prov> [culture|-|owner] [religion|-|owner] [filters]     change culture/religion"
 			format = left
 			fixedsize = yes
 		}
@@ -136,7 +144,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "list_prov_cultures <prov>   /   list_prov_religions <prov>      pop-uri: id | tip | cultura/religie | marime"
+			text = "list_prov_cultures <prov>   /   list_prov_religions <prov>      pops: id | type | culture/religion | size"
 			format = left
 			fixedsize = yes
 		}
@@ -147,7 +155,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "migrate_pop <din> <in> <filtre>        muta pop-urile potrivite      ex: migrate_pop 123 555 polish catholic"
+			text = "migrate_pop <from> <to> <filters>        move matching pops      e.g. migrate_pop 123 555 polish catholic"
 			format = left
 			fixedsize = yes
 		}
@@ -158,7 +166,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "migrate_all_pops <DIN> <SPRE> [accepted] [filtre]    cultura lui SPRE din tara DIN, impartita egal"
+			text = "migrate_all_pops <FROM> <TO> [accepted] [filters]    TO's culture living in FROM, spread evenly"
 			format = left
 			fixedsize = yes
 		}
@@ -169,7 +177,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "      ex: migrate_all_pops GER POL      migrate_all_pops GER POL accepted"
+			text = "      e.g. migrate_all_pops GER POL      migrate_all_pops GER POL accepted"
 			format = left
 			fixedsize = yes
 		}
@@ -180,7 +188,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "double_pop <prov> [filtre]      scale_pop <prov> <procent> [filtre]      (200 = dublu, 50 = jumatate)"
+			text = "double_pop <prov> [filters]      scale_pop <prov> <percent> [filters]      (200 = double, 50 = half)"
 			format = left
 			fixedsize = yes
 		}
@@ -191,7 +199,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "scale_country_pop <TAG> <procent> [filtre]     toata tara      ex: scale_country_pop SER 200 serb"
+			text = "scale_country_pop <TAG> <percent> [filters]     whole country      e.g. scale_country_pop SER 200 serb"
 			format = left
 			fixedsize = yes
 		}
@@ -202,7 +210,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "Filtru = cultura, religie, tip de pop (farmers) sau id de pop. Toate filtrele trebuie sa se potriveasca."
+			text = "Filter = culture, religion, pop type (farmers) or pop id. A pop must match every filter."
 			format = left
 			fixedsize = yes
 		}
@@ -213,7 +221,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 22
-			text = "CULTURI SI CORE-URI"
+			text = "CULTURES AND CORES"
 			format = left
 			fixedsize = yes
 		}
@@ -224,7 +232,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "accept_culture <TAG> [culturi]     unaccept_culture <TAG> <culturi>      (doar TAG = lista)"
+			text = "accept_culture <TAG> [cultures]     unaccept_culture <TAG> <cultures>      (TAG alone = list)"
 			format = left
 			fixedsize = yes
 		}
@@ -235,7 +243,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "add_core <TAG> <prov> [alte prov]      remove_core <TAG> <prov> [alte prov]      ex: add_core SER 652 653"
+			text = "add_core <TAG> <prov> [more]      remove_core <TAG> <prov> [more]      e.g. add_core SER 652 653"
 			format = left
 			fixedsize = yes
 		}
@@ -246,7 +254,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 22
-			text = "BLOCURI (ca in Victoria 3)"
+			text = "POWER BLOCS (Victoria 3 style)"
 			format = left
 			fixedsize = yes
 		}
@@ -257,7 +265,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "bloc_add <nume> <TAG> [alte tag-uri]  (forteaza)      bloc_invite <bloc> <TAG>  (AI-ul accepta sau refuza)"
+			text = "bloc_add <name> <TAG> [more tags]  (forced)      bloc_invite <bloc> <TAG>  (the AI accepts or refuses)"
 			format = left
 			fixedsize = yes
 		}
@@ -268,7 +276,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "bloc_identity <bloc> militar|comercial|imperiu|religios      bloc_leader <TAG>      bloc_info [bloc]"
+			text = "bloc_identity <bloc> military|trade|empire|religious      bloc_leader <TAG>      bloc_info [bloc]"
 			format = left
 			fixedsize = yes
 		}
@@ -279,7 +287,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "bloc_remove <TAG>     bloc_list     bloc_disband <nume>     bloc_map [on|off]  (harta politica pe blocuri)"
+			text = "bloc_remove <TAG>     bloc_list     bloc_disband <name>     bloc_map [on|off]  (political map by bloc)"
 			format = left
 			fixedsize = yes
 		}
@@ -290,7 +298,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "In razboi, membrii intra de partea membrului implicat. Panoul Blocuri arata coeziunea si efectele identitatii."
+			text = "In a war, members join the side of the member involved. The Blocs panel shows cohesion and identity effects."
 			format = left
 			fixedsize = yes
 		}
@@ -301,18 +309,51 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "Click pe o tara pe harta: butonul 'Invita ... in bloc' apare langa fereastra provinciei (doar liderul; yesmen = accepta)."
+			text = "Click a country on the map: an 'Invite ... to bloc' button appears next to the province window (leader only)."
 			format = left
 			fixedsize = yes
 		}
 		instantTextBoxType = {
 			name = "v2cmd_line23"
 			position = { x = 30 y = 494 }
+			font = "vic_18"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 22
+			text = "TREATIES"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_line24"
+			position = { x = 30 y = 518 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 660
 			maxHeight = 18
-			text = "Jurnal: the_grand_loader.log langa v2game.exe. Totalurile de populatie se actualizeaza a doua zi."
+			text = "Click a province, press 'Treaty: ...' next to the province window to offer it or ask for it, then open Treaties."
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_line25"
+			position = { x = 30 y = 538 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "treaty <TAG> [give <ids>] [take <ids>]     treaty_propose     treaty_population [TAG]   (each side gets its own people)"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_line27"
+			position = { x = 30 y = 568 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = "Log: the_grand_loader.log next to v2game.exe. Population totals refresh on the next game day."
 			format = left
 			fixedsize = yes
 		}
@@ -346,7 +387,7 @@ guiTypes = {
 			name = "v2bloc_back"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 22 y = 12 }
-			buttonText = "Comenzi"
+			buttonText = "Commands"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
@@ -354,7 +395,7 @@ guiTypes = {
 			name = "v2bloc_mapbtn"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 520 y = 12 }
-			buttonText = "Harta on/off"
+			buttonText = "Map on/off"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
@@ -1363,7 +1404,7 @@ guiTypes = {
 			name = "v2bloc_prev"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 22 y = 482 }
-			buttonText = "< Anterior"
+			buttonText = "< Previous"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
@@ -1382,7 +1423,7 @@ guiTypes = {
 			name = "v2bloc_next"
 			quadTextureSprite = "GFX_button_standard_144"
 			position = { x = 554 y = 482 }
-			buttonText = "Urmator >"
+			buttonText = "Next >"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 		}
@@ -1399,7 +1440,7 @@ guiTypes = {
 		}
 	}
 
-	# "Invita <TAG> in bloc" button, shown by TGCConvertPop.dll to the right of the province window when you
+	# "Invite <TAG> to bloc" button, shown by TGCConvertPop.dll to the right of the province window when you
 	# click a country on the map and you are in a bloc. Move it with position (from the lower left corner).
 	windowType = {
 		name = "v2bloc_diplo"
@@ -1424,11 +1465,379 @@ guiTypes = {
 			position = { x = 4 y = 8 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
-			text = "Invita in bloc"
+			text = "Invite to bloc"
 			maxWidth = 170
 			maxHeight = 20
 			format = centre
 			fixedsize = yes
+		}
+	}
+
+	# "Treaty: ..." button, shown by TGCConvertPop.dll below the bloc invite button when a province is selected.
+	windowType = {
+		name = "v2treaty_add"
+		backGround = ""
+		position = { x = 386 y = -520 }
+		size = { x = 180 y = 36 }
+		moveable = 0
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "LOWER_LEFT"
+
+		guiButtonType = {
+			name = "v2tr_addbtn"
+			position = { x = 0 y = 0 }
+			quadTextureSprite = "GFX_button_standard_177"
+			clicksound = click
+		}
+		instantTextBoxType = {
+			name = "v2tr_addtext"
+			position = { x = 4 y = 8 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			text = "Treaty"
+			maxWidth = 170
+			maxHeight = 20
+			format = centre
+			fixedsize = yes
+		}
+	}
+
+	# Treaty window (filled by TGCConvertPop.dll)
+	windowType = {
+		name = "v2treaty_window"
+		backGround = "Background"
+		position = { x = -360 y = -291 }
+		size = { x = 720 y = 582 }
+		moveable = 1
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {
+			name = "Background"
+			quadTextureSprite = "GFX_v2treaty_bg"
+		}
+		guiButtonType = {
+			name = "close_button"
+			quadTextureSprite = "GFX_main_close_button"
+			position = { x = 676 y = 12 }
+			Orientation = "UPPER_LEFT"
+			shortcut = "ESCAPE"
+		}
+		instantTextBoxType = {
+			name = "v2tr_header"
+			position = { x = 0 y = 16 }
+			font = "vic_22"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 720
+			maxHeight = 30
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l0"
+			position = { x = 30 y = 56 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l1"
+			position = { x = 30 y = 74 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l2"
+			position = { x = 30 y = 92 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l3"
+			position = { x = 30 y = 110 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l4"
+			position = { x = 30 y = 128 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l5"
+			position = { x = 30 y = 146 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l6"
+			position = { x = 30 y = 164 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l7"
+			position = { x = 30 y = 182 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l8"
+			position = { x = 30 y = 200 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l9"
+			position = { x = 30 y = 218 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l10"
+			position = { x = 30 y = 236 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l11"
+			position = { x = 30 y = 254 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l12"
+			position = { x = 30 y = 272 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l13"
+			position = { x = 30 y = 290 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l14"
+			position = { x = 30 y = 308 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l15"
+			position = { x = 30 y = 326 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l16"
+			position = { x = 30 y = 344 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l17"
+			position = { x = 30 y = 362 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l18"
+			position = { x = 30 y = 380 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l19"
+			position = { x = 30 y = 398 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l20"
+			position = { x = 30 y = 416 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l21"
+			position = { x = 30 y = 434 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l22"
+			position = { x = 30 y = 452 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_l23"
+			position = { x = 30 y = 470 }
+			font = "Arial12"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_status"
+			position = { x = 30 y = 496 }
+			font = "vic_18"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 660
+			maxHeight = 22
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2tr_prov"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 30 y = 526 }
+			buttonText = "Propose exchange"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		guiButtonType = {
+			name = "v2tr_pop"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 200 y = 526 }
+			buttonText = "Population swap"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+		}
+		guiButtonType = {
+			name = "v2tr_clear"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 546 y = 526 }
+			buttonText = "Clear"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
 		}
 	}
 }

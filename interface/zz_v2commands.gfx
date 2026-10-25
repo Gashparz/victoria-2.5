@@ -2,7 +2,13 @@ spriteTypes = {
 	# background of v2cmd_window (TGCConvertPop)
 	corneredTileSpriteType = {
 		name = "GFX_v2cmd_bg"
-		size = { x = 720 y = 538 }
+		size = { x = 720 y = 612 }
+		textureFile = "gfx\\interface\\tiles_dialog_type2.tga"
+		borderSize = { x = 94 y = 94 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2treaty_bg"
+		size = { x = 720 y = 582 }
 		textureFile = "gfx\\interface\\tiles_dialog_type2.tga"
 		borderSize = { x = 94 y = 94 }
 	}

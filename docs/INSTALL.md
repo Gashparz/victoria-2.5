@@ -24,7 +24,7 @@ The `interface` files only add new names, so they never replace a game or mod fi
 
 V2DLL installs as `lua51.dll`, and the original `lua51.dll` is renamed to `lua51_real.dll`. Both loaders work together. Two settings in `v2dll_settings.ini` matter:
 
-- `PLAYER_BUTTONS=0`: V2DLL hooks the same top bar function as the COMENZI tab. If it is 1, the tab is skipped (the log says so) and everything else still works.
+- `PLAYER_BUTTONS=0`: V2DLL hooks the same top bar function as the COMMANDS tab. If it is 1, the tab is skipped (the log says so) and everything else still works.
 - `ENABLE_VERSION_LABEL`: both The Grand Loader and V2DLL patch the main menu version label. If you see problems there, set it to 0.
 
 ## 4. Play
@@ -39,7 +39,7 @@ Open the console with `~` and type `list_prov_cultures 1`.
 |---|---|---|
 | `require_mod` | 0 | 1 = the commands work only when the mod is ticked in the launcher |
 | `fix_merge_everywhere` | 0 | 1 = moving pops merge only with the same culture, game-wide |
-| `topbar_tab` | 1 | 0 = no COMENZI tab |
+| `topbar_tab` | 1 | 0 = no COMMANDS tab |
 
 ## Troubleshooting
 

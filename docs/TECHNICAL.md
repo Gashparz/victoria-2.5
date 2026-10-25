@@ -103,3 +103,12 @@ The plugin destroys its windows when the topbar rebuilds or is destroyed, mirror
   - Its `+0x24` points to the selected country's CTag at `+0x128`/`+0x12C`, the same fields the diplomatic map mode reads (`0x7FCD09`).
 - Visibility of the `v2bloc_diplo` window is synced from `CInGameIdler_Update` (vtable slot `0xE0A350`, thiscall 1 arg), every 6th frame.
 - `yesmen` cheat: the byte `0x12589A7`.
+
+## Treaties
+
+- Province transfer calls `CSecedeProvinceEffect::Execute` (`0x887420`, thiscall `(effect, scope, unused)`) with a fake effect and scope, exactly as an event's `secede_province` would:
+  - fake effect: `+0x20`/`+0x24` = new owner CTag;
+  - fake scope: `+0x08`/`+0x0C` = current owner CTag, `+0x10` = province id.
+- Capital: `country+0xBE4`.
+- Selected province: the province view's `+0x24`, a `Province*` (owner CTag at `+0x128`/`+0x12C`, id at `+0x58`).
+- A population exchange runs `migrate_all_pops <AI> <you> accepted` and `migrate_all_pops <you> <AI> accepted`, so the strict culture merge check applies.
