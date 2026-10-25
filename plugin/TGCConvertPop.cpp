@@ -65,6 +65,54 @@ void logf(const char* fmt, ...) {
     if (g_host && g_host->log) g_host->log(g_host, buf);
 }
 
+// ---- performance counters: time spent inside this plugin, logged once per game month ----
+struct PerfStat {
+    const char* name;
+    uint64_t ticks, max;
+    uint32_t calls;
+    DWORD last_warn;
+};
+enum { P_PALETTE, P_IDLER, P_WARADD, P_DAY_GAME, P_DAY_OURS, P_COLLECT, P_PANEL, P_CACHE, P_COUNT };
+PerfStat g_perf[P_COUNT] = {{"bloc map palette", 0, 0, 0, 0}, {"frame hook", 0, 0, 0, 0},       {"war join", 0, 0, 0, 0},
+                            {"GAME day (whole)", 0, 0, 0, 0}, {"monthly blocs", 0, 0, 0, 0},  {"collect blocs", 0, 0, 0, 0},
+                            {"bloc panel", 0, 0, 0, 0},       {"bloc cache rebuild", 0, 0, 0, 0}};
+double g_qpf_ms = 0;
+uint64_t qpc() { LARGE_INTEGER v; QueryPerformanceCounter(&v); return (uint64_t)v.QuadPart; }
+void logf(const char* fmt, ...);
+struct PerfScope {
+    int id;
+    uint64_t t0;
+    explicit PerfScope(int i) : id(i), t0(qpc()) {}
+    ~PerfScope() {
+        uint64_t d = qpc() - t0;
+        PerfStat& p = g_perf[id];
+        p.ticks += d;
+        ++p.calls;
+        if (d > p.max) p.max = d;
+        if (g_qpf_ms == 0) { LARGE_INTEGER f; QueryPerformanceFrequency(&f); g_qpf_ms = f.QuadPart / 1000.0; }
+        double ms = d / g_qpf_ms;
+        if (id != P_DAY_GAME && ms > 30.0 && GetTickCount() - p.last_warn > 10000) {
+            p.last_warn = GetTickCount();
+            logf("perf: SLOW %s took %.1f ms", p.name, ms);
+        }
+    }
+};
+void perf_report() {
+    if (g_qpf_ms == 0) { LARGE_INTEGER f; QueryPerformanceFrequency(&f); g_qpf_ms = f.QuadPart / 1000.0; }
+    char buf[900];
+    int n = snprintf(buf, sizeof(buf), "perf (last month):");
+    for (int i = 0; i < P_COUNT; ++i) {
+        PerfStat& p = g_perf[i];
+        if (!p.calls) continue;
+        n += snprintf(buf + n, sizeof(buf) - n, " | %s: %u calls, %.1f ms total, max %.1f ms", p.name, p.calls,
+                      p.ticks / g_qpf_ms, p.max / g_qpf_ms);
+        if (n >= (int)sizeof(buf) - 1) break;
+        p.ticks = p.max = 0;
+        p.calls = 0;
+    }
+    logf("%s", buf);
+}
+
 // ---- game addresses (3.04 VAs) ----
 constexpr uintptr_t VA_TABLE_BEGIN = 0x00F09740;
 constexpr uintptr_t VA_TABLE_END = 0x00F0A910;
@@ -1014,7 +1062,9 @@ uintptr_t flag_find(uintptr_t country, const char* name) {
     FindFn fn = reinterpret_cast<FindFn>(rd<uintptr_t>(rd<uintptr_t>(f) + 8));
     return fn(f, nullptr, name);
 }
+bool g_bloc_cache_dirty = true;
 void flag_set(uintptr_t country, const char* name, bool on) {
+    if (_strnicmp(name, "bloc", 4) == 0) g_bloc_cache_dirty = true;
     uintptr_t e = flag_find(country, name);
     if (e) { *reinterpret_cast<uint8_t*>(e + 0x1C) = on ? 1 : 0; return; }
     if (on) tcp_flagset_thunk(R(VA_FLAG_SET), country_flags(country), name);
@@ -1039,6 +1089,51 @@ bool country_bloc(uintptr_t country, char* out, size_t n) {
     flag_walk(rd<uintptr_t>(country_flags(country) + 4), fn, 0);
     return out[0] != 0;
 }
+// Bloc membership of every country, rebuilt at most once per game day (or when this plugin changes a bloc
+// flag): walking the flags of ~700 countries is too slow to repeat on every map redraw or war.
+uint8_t g_cache_bloc[4096];  // 0 = none, else 1 + index into g_cache_names (sorted)
+char g_cache_names[64][32];
+int g_cache_n = 0;
+uint32_t g_cache_date = 0;
+uint32_t world_date() {
+    uintptr_t world = rd<uintptr_t>(R(VA_G_WORLD));
+    return world ? rd<uint32_t>(world + 0xB0C) : 0;
+}
+template <typename F> void for_each_tag(F fn);
+void bloc_cache_refresh() {
+    uint32_t date = world_date();
+    if (!g_bloc_cache_dirty && date == g_cache_date) return;
+    PerfScope ps(P_CACHE);
+    memset(g_cache_bloc, 0, sizeof(g_cache_bloc));
+    static char who[4096][32];
+    static uint32_t idxs[4096];
+    int m = 0;
+    g_cache_n = 0;
+    for_each_tag([&](uint32_t, uint32_t idx) {
+        char b[64];
+        if (idx >= 4096 || !country_bloc(country_at((int)idx), b, sizeof(b))) return;
+        snprintf(who[m], 32, "%s", b);
+        idxs[m++] = idx;
+        for (int k = 0; k < g_cache_n; ++k)
+            if (_stricmp(g_cache_names[k], b) == 0) return;
+        if (g_cache_n < 64) snprintf(g_cache_names[g_cache_n++], 32, "%s", b);
+    });
+    for (int i = 1; i < g_cache_n; ++i)
+        for (int k = i; k > 0 && _stricmp(g_cache_names[k - 1], g_cache_names[k]) > 0; --k) {
+            char t[32];
+            memcpy(t, g_cache_names[k], 32); memcpy(g_cache_names[k], g_cache_names[k - 1], 32); memcpy(g_cache_names[k - 1], t, 32);
+        }
+    for (int i = 0; i < m; ++i)
+        for (int k = 0; k < g_cache_n; ++k)
+            if (_stricmp(g_cache_names[k], who[i]) == 0) { g_cache_bloc[idxs[i]] = (uint8_t)(k + 1); break; }
+    g_cache_date = date;
+    g_bloc_cache_dirty = false;
+}
+const char* cached_bloc(uint32_t idx) {
+    bloc_cache_refresh();
+    return (idx < 4096 && g_cache_bloc[idx]) ? g_cache_names[g_cache_bloc[idx] - 1] : nullptr;
+}
+
 bool country_alive(uintptr_t country) { return country && rd<uintptr_t>(country + 0x9DC) > rd<uintptr_t>(country + 0x9D8); }
 
 // Every real country: {tag chars, index} from the tag hash table (64 buckets of CTag vectors at mgr+0x14).
@@ -1090,8 +1185,8 @@ void bloc_pull(uintptr_t war, bool attackers, uint32_t index) {
     for_each_tag([&](uint32_t tag, uint32_t idx) {
         if (idx == index || war_has(war, 0x2C, idx) || war_has(war, 0x3C, idx)) return;
         uintptr_t c = country_at((int)idx);
-        char b2[64];
-        if (!country_alive(c) || !country_bloc(c, b2, sizeof(b2)) || _stricmp(b2, bloc) != 0) return;
+        const char* b2 = cached_bloc(idx);
+        if (!b2 || _stricmp(b2, bloc) != 0 || !country_alive(c)) return;
         (attackers ? g_add_att : g_add_def)(war, 1, 0, tag, idx);
         char t[4];
         logf("bloc %s: %s joins the war on the %s side", bloc, tag_text(tag, t), attackers ? "attacker" : "defender");
@@ -1109,6 +1204,7 @@ uint32_t __stdcall war_add_att_hook(uintptr_t war, uint32_t join, uint32_t b, ui
     if (war_has(war, 0x3C, index)) return 0;  // never on both sides
     uint32_t r = g_add_att(war, join, b, tag, index);
     if (!(join & 0xFF)) return r;
+    PerfScope ps(P_WARADD);
     if (!war_leader(war, 0x3C)) {
         if (g_npending < 16) g_pending[g_npending++] = {war, index};
         return r;
@@ -1120,6 +1216,7 @@ uint32_t __stdcall war_add_def_hook(uintptr_t war, uint32_t join, uint32_t b, ui
     if (war_has(war, 0x2C, index)) return 0;
     uint32_t r = g_add_def(war, join, b, tag, index);
     if (!(join & 0xFF)) return r;
+    PerfScope ps(P_WARADD);
     for (int i = 0; i < g_npending;) {
         if (g_pending[i].war == war) {
             uint32_t att = g_pending[i].index;
@@ -1291,19 +1388,9 @@ constexpr int kPal = sizeof(kBlocPalette) / sizeof(kBlocPalette[0]);
 
 // Sorted distinct bloc names -> palette index (stable for the same set of blocs).
 int bloc_names(char names[][32], int max) {
-    int n = 0;
-    for_each_tag([&](uint32_t, uint32_t idx) {
-        char b[64];
-        if (!country_bloc(country_at((int)idx), b, sizeof(b))) return;
-        for (int k = 0; k < n; ++k)
-            if (_stricmp(names[k], b) == 0) return;
-        if (n < max) snprintf(names[n++], 32, "%s", b);
-    });
-    for (int i = 1; i < n; ++i)
-        for (int k = i; k > 0 && _stricmp(names[k - 1], names[k]) > 0; --k) {
-            char t[32];
-            memcpy(t, names[k], 32); memcpy(names[k], names[k - 1], 32); memcpy(names[k - 1], t, 32);
-        }
+    bloc_cache_refresh();
+    int n = g_cache_n < max ? g_cache_n : max;
+    for (int k = 0; k < n; ++k) memcpy(names[k], g_cache_names[k], 32);
     return n;
 }
 
@@ -1317,16 +1404,11 @@ uint32_t grey_of(uint32_t argb) {
 void __stdcall pol_palette_hook(uintptr_t cmap) {
     reinterpret_cast<void(__stdcall*)(uintptr_t)>(g_pol_target)(cmap);
     if (!g_bloc_map) return;
+    PerfScope ps(P_PALETTE);
     static uint32_t color_of[4096];
-    memset(color_of, 0, sizeof(color_of));
-    char names[64][32];
-    int nb = bloc_names(names, 64);
-    for_each_tag([&](uint32_t, uint32_t idx) {
-        char b[64];
-        if (idx >= 4096 || !country_bloc(country_at((int)idx), b, sizeof(b))) return;
-        for (int k = 0; k < nb; ++k)
-            if (_stricmp(names[k], b) == 0) { color_of[idx] = kBlocPalette[k % kPal] | 0x01000000u; break; }
-    });
+    bloc_cache_refresh();
+    for (int idx = 0; idx < 4096; ++idx)
+        color_of[idx] = g_cache_bloc[idx] ? (kBlocPalette[(g_cache_bloc[idx] - 1) % kPal] | 0x01000000u) : 0;
     uintptr_t* b = rd<uintptr_t*>(cmap + 0x1C);
     uintptr_t* e = rd<uintptr_t*>(cmap + 0x20);
     for (uintptr_t* it = b ? b + 1 : nullptr; it && it < e; ++it) {
@@ -1912,6 +1994,7 @@ const char* cohesion_level(int c) {
 
 // Reads every bloc (sorted by name) with members, leader (flag, else highest prestige), identity, cohesion.
 int collect_blocs() {
+    PerfScope ps(P_COLLECT);
     char names[64][32];
     int nb = bloc_names(names, 64);
     for (int k = 0; k < nb; ++k) {
@@ -1920,8 +2003,8 @@ int collect_blocs() {
     }
     for_each_tag([&](uint32_t tag, uint32_t idx) {
         uintptr_t c = country_at((int)idx);
-        char b[64];
-        if (!country_bloc(c, b, sizeof(b))) return;
+        const char* b = cached_bloc(idx);
+        if (!b) return;
         if (idx < 4096) g_member_tag[idx] = tag;
         for (int k = 0; k < nb; ++k)
             if (_stricmp(g_blocs[k].name, b) == 0 && g_blocs[k].n < 256) {
@@ -2059,9 +2142,18 @@ int current_month() {
     return 11;
 }
 void __stdcall daytick_hook(uintptr_t world) {
-    reinterpret_cast<void(__stdcall*)(uintptr_t)>(g_daytick_target)(world);
+    {
+        PerfScope ps(P_DAY_GAME);
+        reinterpret_cast<void(__stdcall*)(uintptr_t)>(g_daytick_target)(world);
+    }
     int m = current_month();
-    if (m >= 0 && g_last_month >= 0 && m != g_last_month) bloc_monthly();
+    if (m >= 0 && g_last_month >= 0 && m != g_last_month) {
+        {
+            PerfScope ps(P_DAY_OURS);
+            bloc_monthly();
+        }
+        perf_report();
+    }
     if (m != g_last_month) {
         g_last_month = m;
         if (g_blocwin && win_visible(g_blocwin)) bloc_panel_refresh();
@@ -2200,6 +2292,7 @@ void fmt_people(uint64_t n, char* out, size_t sz) {
 }
 void bloc_panel_refresh() {
     if (!g_blocwin) return;
+    PerfScope ps(P_PANEL);
     collect_blocs();
     {
         char st[300];
@@ -2383,12 +2476,17 @@ int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     static int skip = 0;
     if (++skip < 6) return r;  // ~10 checks a second is plenty
     skip = 0;
+    PerfScope ps(P_IDLER);
     uint32_t sel = 0;
     bool open = diplomacy_open(&sel);
     bool want = false;
     char mine[64] = "";
     uint32_t me = player_index();
-    if (open && sel && sel != me) want = country_bloc(country_at((int)me), mine, sizeof(mine));
+    if (open && sel && sel != me) {
+        const char* mb = cached_bloc(me);
+        want = mb != nullptr;
+        if (mb) snprintf(mine, sizeof(mine), "%s", mb);
+    }
     if (want && !g_diplowin) {
         g_diplowin = gui_create("v2bloc_diplo");
         if (g_diplowin) {
@@ -2399,8 +2497,9 @@ int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     static uint32_t last_sel = 0xFFFFFFFF;
     static char last_label[64] = "";
     if (g_diplowin && want) {
-        char label[64], tb[4], theirs[64];
-        if (country_bloc(country_at((int)sel), theirs, sizeof(theirs)))
+        char label[64], tb[4];
+        const char* theirs = cached_bloc(sel);
+        if (theirs)
             snprintf(label, sizeof(label), "%s: in blocul %s", tag_of(sel, tb), theirs);
         else
             snprintf(label, sizeof(label), "Invita %s in bloc", tag_of(sel, tb));
@@ -2513,7 +2612,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-25c (power blocs + invite button)");
+    logf("TGC Convert Pop build 2026-10-25d (blocs, cached + perf log)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
