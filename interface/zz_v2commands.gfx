@@ -25,10 +25,28 @@ spriteTypes = {
 		borderSize = { x = 2 y = 2 }
 	}
 	corneredTileSpriteType = {
+		name = "GFX_v2cmd_hdr_560x58"
+		size = { x = 560 y = 58 }
+		textureFile = "gfx\\interface\\v2cmd_header.tga"
+		borderSize = { x = 3 y = 3 }
+	}
+	corneredTileSpriteType = {
 		name = "GFX_v2treaty_bg"
-		size = { x = 760 y = 648 }
+		size = { x = 760 y = 612 }
 		textureFile = "gfx\\interface\\v2cmd_frame.tga"
 		borderSize = { x = 94 y = 94 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2cmd_hdr_340x22"
+		size = { x = 340 y = 22 }
+		textureFile = "gfx\\interface\\v2cmd_header.tga"
+		borderSize = { x = 3 y = 3 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2cmd_row_340x19"
+		size = { x = 340 y = 19 }
+		textureFile = "gfx\\interface\\v2cmd_row.tga"
+		borderSize = { x = 2 y = 2 }
 	}
 	corneredTileSpriteType = {
 		name = "GFX_v2cmd_hdr_690x24"

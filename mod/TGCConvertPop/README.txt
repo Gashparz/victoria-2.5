@@ -56,14 +56,16 @@ Console commands (single player)
   Cohesion 0-100 (relations with the leader, size, shared religion, members at war with each other):
         below 20 (Fractured) only the leader's wars pull the bloc in.
   The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects, members table.
-  Without the console: click a country on the map; next to the province window a button appears:
-        "Form bloc with <Country>" (you have no bloc: founds "<Your country> Pact" with you as leader, then invites)
-        or "Invite <Country>" (only the leader can invite). With the yesmen cheat on, the AI always accepts.
+  Without the console: open Diplomacy and select a country. A bar under the diplomacy window shows its bloc and
+        relations, with "Propose treaty", "Invite to bloc" / "Form a bloc" (founds "<Your country> Pact" with you
+        as leader, then invites) and "Power blocs". With the yesmen cheat on, the AI always accepts.
         The bloc panel also has Create/Leave, Identity, Disband and Bloc map buttons.
 
 Treaties (province exchange, population exchange)
-  Click a province on the map: an "Offer <Province>" / "Ask for <Province>" button appears next to the
-  province window. Add provinces on both sides, then BLOCS -> Treaties (or it opens by itself).
+  Diplomacy -> select a country -> "Propose treaty". In the treaty window turn on "Pick on map" and click
+  provinces (yours are offered, theirs are asked for), or use "+ My people" / "+ Their people".
+  Population swap: only cultures that belong to one side move; cultures both countries count as their own stay.
+  No treaty may move more than 30% of a country's people.
   The treaty window shows the AI's chance and every reason:
     province exchange    value of what each side gives (population, its own nation's share, cores),
                          -25 if it would give up land of its own nation, +15 if it gets its own people back,

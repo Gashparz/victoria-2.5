@@ -146,8 +146,8 @@ tips["V2CMD_TT_TAB"] = "Power blocs, treaties and the console command reference.
 ref = [
  ("H", "WITHOUT THE CONSOLE"),
  ("T", "Blocs: found a bloc, set its identity, see members, cohesion and the bloc map mode."),
- ("T", "Click any country on the map: 'Form bloc with ...' / 'Invite ...' appears next to the province window."),
- ("T", "Treaties: click a province, then 'Offer ...' or 'Ask for ...' next to the province window, or turn on 'Pick on map'."),
+ ("T", "Diplomacy: select a country - under the diplomacy window: Propose treaty, Invite to bloc, Power blocs."),
+ ("T", "Treaty window: turn on 'Pick on map' and click provinces, or add whole regions with '+ My people' / '+ Their people'."),
  ("H", "POPULATION  (console: press ~)"),
  ("T", "convert_pop <prov> [culture|-|owner] [religion|-|owner] [filters]       list_prov_cultures <prov>"),
  ("T", "migrate_pop <from> <to> <filters>        migrate_all_pops <FROM> <TO> [accepted] [filters]"),
@@ -217,73 +217,94 @@ add(button("v2bloc_mapbtn", xs[3], yb2, " ", "Colour the political map by bloc (
 add(tbox("v2bloc_maptext", xs[3] + 4, yb2 + 8, TXT, 136, 18, "centre", "Bloc map"))
 add(tbox("v2bloc_mapstate", 45, yb2 + 44, TXT, W - 90, 18))
 add(tbox("v2bloc_hint", 45, yb2 + 64, TXT, W - 90, 18, "left",
-         "Tip: click a country on the map, then press the bloc button next to the province window."))
+         "Tip: in Diplomacy, select a country and press 'Invite to bloc' under the diplomacy window."))
 add('\t}\n')
 
-# ---------------- buttons next to the province window ----------------
-def side_button(win, btn, txtbox, y, text, tip):
-    key = "V2CMD_TT_" + btn.upper(); tips[key] = tip
-    return f'''
+# ---------------- action bar under the Diplomacy window ----------------
+# The game's diplomacy window (country_diplomacy) is 1024x632 at x=-512 y=-250 from the screen centre.
+# This bar sits right under it; move it with position if a mod resizes that window.
+DBW, DBH = 560, 58
+tips["V2CMD_TT_V2DIP_TREATY"] = "Exchange provinces or populations with this country. The AI weighs culture, cores, power and relations."
+tips["V2CMD_TT_V2DIP_BLOC"] = "Invite this country into your power bloc (or found one). With yesmen on, the AI accepts."
+tips["V2CMD_TT_V2DIP_BLOCS"] = "Open the power bloc panel."
+add(f"""
 	windowType = {{
-		name = "{win}"
+		name = "v2dip_bar"
 		backGround = ""
-		position = {{ x = 386 y = {y} }}
-		size = {{ x = 180 y = 36 }}
+		position = {{ x = {512 - DBW} y = 384 }}
+		size = {{ x = {DBW} y = {DBH} }}
 		moveable = 0
 		dontRender = ""
 		horizontalBorder = ""
 		verticalBorder = ""
 		fullScreen = no
-		Orientation = "LOWER_LEFT"
-
-		guiButtonType = {{
-			name = "{btn}"
-			position = {{ x = 0 y = 0 }}
-			quadTextureSprite = "GFX_button_standard_177"
-			buttonText = " "
+		Orientation = "CENTER"
+""")
+add(deco("v2dip_bg", bar(DBW, DBH), 0, 0))
+add(tbox("v2dip_info", 12, 6, TXT, DBW - 24, 18))
+def thin(name, x, y, text, label_box=None):
+    key = "V2CMD_TT_" + name.upper()
+    t = f'\n\t\t\ttooltipText = "{key}"' if key in tips else ""
+    r = f"""		guiButtonType = {{
+			name = "{name}"
+			quadTextureSprite = "GFX_button_thin_160"
+			position = {{ x = {x} y = {y} }}
+			buttonText = "{text}"
 			buttonFont = "vic_18_black"
-			clicksound = click
-			tooltipText = "{key}"
+			Orientation = "UPPER_LEFT"
+			clicksound = click{t}
 		}}
-		instantTextBoxType = {{
-			name = "{txtbox}"
-			position = {{ x = 4 y = 9 }}
-			font = "{TXT}"
-			borderSize = {{ x = 0 y = 0 }}
-			text = "{text}"
-			maxWidth = 170
-			maxHeight = 18
-			format = centre
-			fixedsize = yes
-		}}
-	}}
-'''
-add("\t# Shown by TGCConvertPop.dll to the right of the province window. Move with position (from the lower left).")
-add(side_button("v2bloc_diplo", "v2bloc_invite", "v2bloc_invite_text", -560, "Invite to bloc",
-                "Invite this country into your bloc (the AI decides; with yesmen it accepts). Without a bloc, this founds one first."))
-add(side_button("v2treaty_add", "v2tr_addbtn", "v2tr_addtext", -520, "Treaty",
-                "Add this province to the treaty: yours are offered, theirs are asked for. Click again to remove it."))
+"""
+    if label_box:
+        r += tbox(label_box, x + 4, y + 4, TXT, 152, 18, "centre")
+    return r
+add(thin("v2dip_treaty", 12, 28, "Propose treaty"))
+add(thin("v2dip_bloc", 200, 28, " ", "v2dip_bloctext"))
+add(thin("v2dip_blocs", DBW - 172, 28, "Power blocs"))
+add('\t}\n')
 
 # ---------------- treaty window ----------------
-TL = 24
-ty0 = 66
-TH = ty0 + TL * 18 + 150
+TH = 612
 add(window_head("v2treaty_window", W, TH, "GFX_v2treaty_bg", "v2tr_header"))
-for i in range(TL):
-    add(tbox(f"v2tr_l{i}", 45, ty0 + i * 18, TXT, W - 90, 18))
-yb = ty0 + TL * 18 + 8
-add(deco("v2tr_sbar", bar(W - 70, 24), 35, yb - 2))
-add(tbox("v2tr_status", 45, yb, HEAD, W - 90, 22))
+CW = (W - 80) // 2          # column width
+cols = [("v2tr_g", 35), ("v2tr_t", 45 + CW)]
+for pre, x in cols:
+    add(deco(pre + "hb", bar(CW), x, 64))
+    add(tbox(pre + "h", x + 8, 66, HEAD, CW - 16, 20))
+    for r in range(8):
+        y = 90 + r * 20
+        add(deco(f"{pre}bg{r}", rowbg(CW), x, y))
+        add(tbox(f"{pre}{r}", x + 8, y + 2, TXT, CW - 16, 18))
+y = 90 + 8 * 20 + 8
 xs = [35, 35 + (W - 70 - 144) // 3, 35 + 2 * (W - 70 - 144) // 3, W - 35 - 144]
-add(button("v2tr_pick", xs[0], yb + 32, " ", "While on, every province you click on the map is added to (or removed from) the treaty."))
-add(tbox("v2tr_pick_text", xs[0] + 4, yb + 40, TXT, 136, 18, "centre"))
-add(button("v2tr_mine", xs[1], yb + 32, "+ My people", "Ask for every province of theirs where your primary culture is the majority."))
-add(button("v2tr_theirs", xs[2], yb + 32, "+ Their people", "Offer every province of yours where their primary culture is the majority."))
-add(button("v2tr_clear", xs[3], yb + 32, "Clear", "Empty the treaty."))
-add(button("v2tr_prov", xs[0], yb + 72, "Propose", "Send the province exchange. A refusal costs 10 relations."))
-add(button("v2tr_popopt", xs[2], yb + 72, " ", "Which pops move in the population swap (click to cycle)."))
-add(tbox("v2tr_popopt_text", xs[2] + 4, yb + 80, TXT, 136, 18, "centre"))
-add(button("v2tr_pop", xs[3], yb + 72, "Population swap", "Each side receives its own people living in the other country. A refusal costs 5 relations."))
+add(button("v2tr_pick", xs[0], y, " ", "While on, every province you click on the map is added to (or removed from) the treaty."))
+add(tbox("v2tr_pick_text", xs[0] + 4, y + 8, TXT, 136, 18, "centre"))
+add(button("v2tr_mine", xs[1], y, "+ My people", "Ask for every province of theirs where your own culture is the majority."))
+add(button("v2tr_theirs", xs[2], y, "+ Their people", "Offer every province of yours where their culture is the majority."))
+add(button("v2tr_clear", xs[3], y, "Clear", "Empty both lists."))
+# province exchange section
+y += 46
+add(deco("v2tr_phb", bar(W - 70), 35, y))
+add(tbox("v2tr_ptitle", 45, y + 2, HEAD, 300, 20, "left", "PROVINCE EXCHANGE"))
+add(tbox("v2tr_pchance", W - 245, y + 2, HEAD, 200, 20, "right"))
+for i in range(5):
+    add(tbox(f"v2tr_pw{i}", 45, y + 28 + i * 18, TXT, W - 260, 18))
+add(button("v2tr_prov", W - 35 - 144, y + 34, "Propose", "Send the province exchange. A refusal costs 10 relations."))
+y += 28 + 5 * 18 + 10
+# population section
+add(deco("v2tr_ohb", bar(W - 70), 35, y))
+add(tbox("v2tr_otitle", 45, y + 2, HEAD, 300, 20, "left", "POPULATION SWAP"))
+add(tbox("v2tr_popchance", W - 245, y + 2, HEAD, 200, 20, "right"))
+add(tbox("v2tr_popsum", 45, y + 28, TXT, W - 260, 18))
+for i in range(3):
+    add(tbox(f"v2tr_ow{i}", 45, y + 48 + i * 18, TXT, W - 260, 18))
+add(button("v2tr_popopt", W - 35 - 144, y + 28, " ", "Which pops move: both ways, only theirs, only yours, or a single culture (click to cycle)."))
+add(tbox("v2tr_popopt_text", W - 35 - 140, y + 36, TXT, 136, 18, "centre"))
+add(button("v2tr_pop", W - 35 - 144, y + 66, "Swap", "Each side receives its own people from the other. Shared cultures stay. A refusal costs 5 relations."))
+y += 48 + 3 * 18 + 12
+add(deco("v2tr_sbar", bar(W - 70, 24), 35, y))
+add(tbox("v2tr_status", 45, y + 2, TXT, W - 90, 20))
+assert y + 24 + 30 <= TH, y
 add('\t}\n}\n')
 
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))

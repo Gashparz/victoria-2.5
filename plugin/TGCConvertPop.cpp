@@ -368,6 +368,7 @@ const char* religion_name(uintptr_t r) { return r ? gs_cstr(reinterpret_cast<con
 // Localisation: table = 0x009AD510() (the global at 0x0131C99C), text = 0x009AD9D0(EDX = key, push table) -> const char* or 0
 // (the lookup behind "Couldn't find localization string").
 constexpr uintptr_t VA_LOC_TABLE = 0x009AD510, VA_LOC_FIND = 0x009AD9D0;
+constexpr uintptr_t VA_DIPWIN_CTOR = 0x0061B820, VA_DIPWIN_VT = 0x00E07450;
 }  // namespace
 extern "C" const char* tcp_loc_thunk(uintptr_t fn, uintptr_t table, const char* key);
 asm(R"(
@@ -2427,7 +2428,7 @@ void bloc_panel_refresh() {
         tb_set(g_blocwin, "v2bloc_header", "Power Blocs");
         tb_set(g_blocwin, "v2bloc_info1", "There are no power blocs yet.");
         tb_set(g_blocwin, "v2bloc_info2", "Press 'Create bloc' to found one with you as its leader.");
-        tb_set(g_blocwin, "v2bloc_bar", "Or click a country on the map and press 'Form bloc with ...' next to the province window.");
+        tb_set(g_blocwin, "v2bloc_bar", "Or open Diplomacy, select a country and press 'Form a bloc' below the diplomacy window.");
         tb_set(g_blocwin, "v2bloc_eff1", " ");
         tb_set(g_blocwin, "v2bloc_eff2", " ");
         tb_set(g_blocwin, "v2bloc_page", " ");
@@ -2628,9 +2629,9 @@ uint32_t player_index() {
     return world ? rd<uint32_t>(world + 0xB60) : 0;
 }
 
+uint32_t g_dip_sel = 0;  // country selected in the Diplomacy window
 extern "C" void __cdecl tcp_on_diplo_invite() {
-    uint32_t sel = 0;
-    diplomacy_open(&sel);
+    uint32_t sel = g_dip_sel;
     uint32_t me = player_index();
     char bloc[64];
     collect_blocs();
@@ -2673,6 +2674,7 @@ _tcp_diplo_invite_thunk:
 
 void treaty_frame_sync(bool open, uintptr_t prov);
 uintptr_t selected_province();
+void dipbar_sync();
 int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     int r = g_idler_orig(self, edx, a);
     if (!g_topbar || !g_layer || !g_blocs_ok) return r;
@@ -2683,41 +2685,7 @@ int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     uint32_t sel = 0;
     bool open = diplomacy_open(&sel);
     treaty_frame_sync(open, open ? selected_province() : 0);
-    bool want = false;
-    char mine[64] = "";
-    uint32_t me = player_index();
-    if (open && sel && sel != me) {
-        const char* mb = cached_bloc(me);
-        want = true;
-        if (mb) snprintf(mine, sizeof(mine), "%s", mb);
-    }
-    if (want && !g_diplowin) {
-        g_diplowin = gui_create("v2bloc_diplo");
-        if (g_diplowin) {
-            subscribe(g_diplowin, "v2bloc_invite", g_diplo_glue, &tcp_diplo_invite_thunk);
-            logf("diplomacy: bloc invite button created");
-        }
-    }
-    static uint32_t last_sel = 0xFFFFFFFF;
-    static char last_label[64] = "";
-    if (g_diplowin && want) {
-        char label[64], tb[4];
-        const char* theirs = cached_bloc(sel);
-        char bd[48];
-        (void)tb;
-        if (theirs)
-            snprintf(label, sizeof(label), "%s", bloc_display(theirs, bd, sizeof(bd)));
-        else if (!mine[0])
-            snprintf(label, sizeof(label), "Form bloc with %s", cn(sel));
-        else
-            snprintf(label, sizeof(label), "Invite %s", cn(sel));
-        if (sel != last_sel || strcmp(label, last_label) != 0) {
-            tb_set(g_diplowin, "v2bloc_invite_text", label);
-            last_sel = sel;
-            snprintf(last_label, sizeof(last_label), "%s", label);
-        }
-    }
-    if (g_diplowin && win_visible(g_diplowin) != want) win_show(g_diplowin, want);
+    dipbar_sync();
     return r;
 }
 void install_diplo_button() {
@@ -3111,89 +3079,85 @@ void treaty_propose_population() {
 
 // ---- the treaty panel ----
 constexpr int kTrLines = 24;
+// Province line for the two columns: "Paris  1.21M  mostly North German  (their core)"
+void prov_row(char* out, size_t n, uint32_t id, uint32_t me, uint32_t ai, uint32_t nation) {
+    uintptr_t p = get_province(id);
+    if (!p) { snprintf(out, n, "%s", pn(id)); return; }
+    ProvStats st = prov_stats(p, country_at((int)nation));
+    char ppl[24];
+    fmt_people(st.people, ppl, sizeof(ppl));
+    const char* core = province_has_core(p, ai) && province_has_core(p, me) ? "  (both cores)"
+                     : province_has_core(p, ai) ? "  (their core)" : province_has_core(p, me) ? "  (your core)" : "";
+    snprintf(out, n, "%s   %s, %s%s", pn(id), ppl, culture_display(st.top_culture), core);
+}
+constexpr int kTrRows = 8, kTrWhy = 5, kTrPopWhy = 3;
 void treaty_panel_refresh() {
     if (!g_treatywin) return;
     uint32_t me = player_index(), ai = g_tr_partner;
-    char lines[kTrLines][160];
-    int n = 0;
-    for (auto& l : lines) l[0] = 0;
-    char t[4], hdr[64];
-    if (ai) snprintf(hdr, sizeof(hdr), "Treaty with %s", cn(ai));
-    else snprintf(hdr, sizeof(hdr), "Treaty");
-    tb_set(g_treatywin, "v2tr_header", hdr);
-    auto prov_line = [&](const char* title, uint32_t* l, int cnt, uint32_t nation_of) {
-        if (cnt <= 4) {
-            if (n < kTrLines) snprintf(lines[n++], 160, "%s", title);
-            if (!cnt && n < kTrLines) snprintf(lines[n++], 160, "      (nothing)");
-            for (int i = 0; i < cnt && n < kTrLines; ++i) {
-                uintptr_t p = get_province(l[i]);
-                if (!p) continue;
-                ProvStats st = prov_stats(p, country_at((int)nation_of));
-                char ppl[24];
-                fmt_people(st.people, ppl, sizeof(ppl));
-                snprintf(lines[n++], 160, "      %s   %s people, mostly %s   %s", pn(l[i]), ppl, culture_display(st.top_culture),
-                         province_has_core(p, ai) ? C_YELLOW "(their core)" C_END : province_has_core(p, me) ? C_YELLOW "(your core)" C_END : "");
-            }
-            return;
-        }
+    char buf[200], nm[24];
+    if (ai) snprintf(buf, sizeof(buf), "Treaty with %s", cn(ai));
+    else snprintf(buf, sizeof(buf), "Treaty");
+    tb_set(g_treatywin, "v2tr_header", buf);
+    auto column = [&](const char* prefix, const char* head, uint32_t* l, int cnt) {
         uint64_t total = 0;
         for (int i = 0; i < cnt; ++i)
             if (uintptr_t p = get_province(l[i])) total += prov_stats(p, 0).people;
         char ppl[24];
         fmt_people(total, ppl, sizeof(ppl));
-        if (n < kTrLines) snprintf(lines[n++], 160, "%s %d provinces, %s people", title, cnt, ppl);
-        char buf[160] = "      ";
-        int rows = 0;
-        for (int i = 0; i < cnt; ++i) {
-            char item[48];
-            snprintf(item, sizeof(item), "%s, ", pn(l[i]));
-            if (strlen(buf) + strlen(item) > 120) {
-                if (rows < 2 && n < kTrLines) snprintf(lines[n++], 160, "%s", buf);
-                ++rows;
-                snprintf(buf, sizeof(buf), "      ");
-            }
-            strncat(buf, item, sizeof(buf) - strlen(buf) - 1);
+        if (cnt) snprintf(buf, sizeof(buf), "%s  -  %d province%s, %s people", head, cnt, cnt == 1 ? "" : "s", ppl);
+        else snprintf(buf, sizeof(buf), "%s", head);
+        snprintf(nm, sizeof(nm), "%sh", prefix);
+        tb_set(g_treatywin, nm, buf);
+        for (int r = 0; r < kTrRows; ++r) {
+            snprintf(nm, sizeof(nm), "%s%d", prefix, r);
+            if (r == kTrRows - 1 && cnt > kTrRows) snprintf(buf, sizeof(buf), "... and %d more", cnt - kTrRows + 1);
+            else if (r < cnt) prov_row(buf, sizeof(buf), l[r], me, ai, ai);
+            else if (r == 0) snprintf(buf, sizeof(buf), "(nothing)");
+            else buf[0] = 0;
+            tb_set(g_treatywin, nm, buf[0] ? buf : " ");
         }
-        if (rows < 2 && n < kTrLines) snprintf(lines[n++], 160, "%s", buf);
-        else if (n < kTrLines) snprintf(lines[n++], 160, "      ...");
     };
-    prov_line("You give:", g_tr_give, g_tr_ngive, ai);
-    snprintf(hdr, sizeof(hdr), "%s gives:", ai ? cn(ai) : "They");
-    prov_line(hdr, g_tr_take, g_tr_ntake, ai);
-    if (n < kTrLines) ++n;
+    column("v2tr_g", "YOU GIVE", g_tr_give, g_tr_ngive);
+    char th[64];
+    snprintf(th, sizeof(th), "%s GIVES", ai ? cn(ai) : "THEY");
+    for (char* q = th; *q; ++q) *q = (char)toupper((unsigned char)*q);
+    column("v2tr_t", th, g_tr_take, g_tr_ntake);
+    // province exchange
     Eval e = eval_provinces(me, ai);
-    if (n < kTrLines) {
-        if (e.possible) snprintf(lines[n++], 160, "PROVINCE EXCHANGE  -  chance they accept: %s%d%%" C_END, e.chance >= 50 ? C_GREEN : C_RED, e.chance);
-        else snprintf(lines[n++], 160, "PROVINCE EXCHANGE  -  " C_RED "not possible" C_END);
+    if (!ai) snprintf(buf, sizeof(buf), " ");
+    else if (e.possible) snprintf(buf, sizeof(buf), "Chance: %s%d%%" C_END, e.chance >= 50 ? C_GREEN : C_RED, e.chance);
+    else snprintf(buf, sizeof(buf), C_RED "Not possible" C_END);
+    tb_set(g_treatywin, "v2tr_pchance", buf);
+    for (int i = 0; i < kTrWhy; ++i) {
+        snprintf(nm, sizeof(nm), "v2tr_pw%d", i);
+        if (!ai && i == 0) tb_set(g_treatywin, nm, "Open Diplomacy, select a country and press 'Propose treaty'.");
+        else if (!ai && i == 1) tb_set(g_treatywin, nm, "Then turn on 'Pick on map' and click provinces: yours are offered, theirs are asked for.");
+        else if (i == kTrWhy - 1 && e.n > kTrWhy) { snprintf(buf, sizeof(buf), "... %d more reasons", e.n - kTrWhy + 1); tb_set(g_treatywin, nm, buf); }
+        else tb_set(g_treatywin, nm, ai && i < e.n ? e.why[i] : " ");
     }
-    for (int i = 0; i < e.n && n < kTrLines; ++i) snprintf(lines[n++], 160, "      %s", e.why[i]);
-    if (n < kTrLines) ++n;
-    if (ai) {
-        PopEval pe = eval_population(me, ai);
-        char a[24], b[24];
-        fmt_people(pe.they_lose, a, sizeof(a));
-        fmt_people(pe.they_get, b, sizeof(b));
-        char opt[64];
-        popopt_label(opt, sizeof(opt));
-        if (n < kTrLines) {
-            if (pe.e.possible)
-                snprintf(lines[n++], 160, "POPULATION (%s)  -  you receive %s, they receive %s  -  chance: %s%d%%" C_END, opt, a, b, pe.e.chance >= 50 ? C_GREEN : C_RED, pe.e.chance);
-            else snprintf(lines[n++], 160, "POPULATION (%s)  -  " C_RED "not possible" C_END, opt);
-        }
-        for (int i = 0; i < pe.e.n && n < kTrLines; ++i) snprintf(lines[n++], 160, "      %s", pe.e.why[i]);
-    } else if (n < kTrLines) {
-        snprintf(lines[n++], 160, "Turn on 'Pick on map', then click provinces: yours are offered, theirs are asked for.");
-    }
-    for (int i = 0; i < kTrLines; ++i) {
-        char nm[16];
-        snprintf(nm, sizeof(nm), "v2tr_l%d", i);
-        tb_set(g_treatywin, nm, lines[i][0] ? lines[i] : " ");
-    }
-    tb_set(g_treatywin, "v2tr_status", g_tr_status[0] ? g_tr_status : " ");
+    // population swap
+    PopEval pe{};
+    if (ai) pe = eval_population(me, ai);
     char opt[64];
     popopt_label(opt, sizeof(opt));
     tb_set(g_treatywin, "v2tr_popopt_text", opt);
-    tb_set(g_treatywin, "v2tr_pick_text", g_tr_pick ? "Pick on map: ON" : "Pick on map: off");
+    if (!ai) snprintf(buf, sizeof(buf), " ");
+    else if (pe.e.possible) snprintf(buf, sizeof(buf), "Chance: %s%d%%" C_END, pe.e.chance >= 50 ? C_GREEN : C_RED, pe.e.chance);
+    else snprintf(buf, sizeof(buf), C_RED "Not possible" C_END);
+    tb_set(g_treatywin, "v2tr_popchance", buf);
+    if (ai) {
+        char a2[24], b2[24];
+        fmt_people(pe.they_lose, a2, sizeof(a2));
+        fmt_people(pe.they_get, b2, sizeof(b2));
+        snprintf(buf, sizeof(buf), "You receive " C_GREEN "%s" C_END " of your people,  %s receives " C_GREEN "%s" C_END " of theirs.", a2, cn(ai), b2);
+    } else snprintf(buf, sizeof(buf), " ");
+    tb_set(g_treatywin, "v2tr_popsum", buf);
+    for (int i = 0; i < kTrPopWhy; ++i) {
+        snprintf(nm, sizeof(nm), "v2tr_ow%d", i);
+        tb_set(g_treatywin, nm, ai && i < pe.e.n ? pe.e.why[i] : " ");
+    }
+    tb_set(g_treatywin, "v2tr_status", g_tr_status[0] ? g_tr_status : " ");
+    tb_set(g_treatywin, "v2tr_pick_text", g_tr_pick ? C_GREEN "Pick on map: ON" C_END : "Pick on map: off");
 }
 void treaty_open() {
     if (!g_treatywin) {
@@ -3298,26 +3262,159 @@ void treaty_frame_sync(bool open, uintptr_t prov) {
             treaty_panel_refresh();
         }
     }
-    bool want = open && prov && rd<uint32_t>(prov + 0x12C) != 0;
-    if (want && !g_traddwin) {
-        g_traddwin = gui_create("v2treaty_add");
-        if (g_traddwin) subscribe(g_traddwin, "v2tr_addbtn", g_tr_add_glue, &tcp_tr_add_thunk);
+    (void)me;
+}
+
+
+// ================= Diplomacy window integration =================
+// CDiplomacyWindow (vtable 0x00E07450) is built by 0x0061B820 (stdcall-like: [esp+4] = this). We detour its
+// prologue (55 8B EC 6A FF) to remember the object. Its gui window is at +0x4C (vt 7 = IsVisible reads
+// [this+0x4C]+0x67). Window vt 0x6C finds a child window, vt 0x3C a text box. The selected country's name is the
+// text of diplomacy_country_facts/country_name; we map it back to a country by its localised name.
+}  // namespace
+extern "C" { uintptr_t g_dipobj = 0; uintptr_t g_dipctor_cont = 0; }
+extern "C" void tcp_dip_treaty_thunk();
+extern "C" void tcp_dip_bloc_thunk();
+extern "C" void tcp_dip_blocs_thunk();
+extern "C" void tcp_dipctor_hook();
+namespace {
+
+void* g_dipbar = nullptr;
+alignas(8) uint8_t g_dip_treaty_glue[kGlueSize], g_dip_bloc_glue[kGlueSize], g_dip_blocs_glue[kGlueSize];
+int g_dip_sel_off = -1;  // learned: offset in CDiplomacyWindow that holds the selected CCountry*
+bool dip_visible() {
+    if (!g_dipobj || IsBadReadPtr((void*)g_dipobj, 0x60) || rd<uintptr_t>(g_dipobj) != R(VA_DIPWIN_VT)) return false;
+    uintptr_t gui = rd<uintptr_t>(g_dipobj + 0x4C);
+    return gui && rd<uint8_t>(gui + 0x67) != 0;
+}
+int country_index_of_ptr(uintptr_t c) {
+    int r = -1;
+    if (!c) return -1;
+    for_each_tag([&](uint32_t, uint32_t idx) { if (r < 0 && country_at((int)idx) == c) r = (int)idx; });
+    return r;
+}
+uint32_t dip_selected() {
+    uintptr_t gui = rd<uintptr_t>(g_dipobj + 0x4C);
+    GameString n;
+    gs_view(&n, "diplomacy_country_facts", 23);
+    void* facts = vcall1((void*)gui, 0x6C, &n);
+    const char* text = nullptr;
+    if (facts) {
+        gs_view(&n, "country_name", 12);
+        uint8_t* tb = (uint8_t*)vcall1(facts, 0x3C, &n);
+        if (tb) text = gs_cstr(reinterpret_cast<const GameString*>(tb + 0xDC));
     }
-    if (!g_traddwin) return;
-    if (want) {
-        static char last[64] = "";
-        char label[64], t[4];
-        uint32_t id = rd<uint32_t>(prov + 0x58), owner = rd<uint32_t>(prov + 0x12C);
-        bool listed = in_list(g_tr_give, g_tr_ngive, id) || in_list(g_tr_take, g_tr_ntake, id);
-        if (listed) snprintf(label, sizeof(label), "Remove %s", pn(id));
-        else if (owner == me) snprintf(label, sizeof(label), "Offer %s", pn(id));
-        else snprintf(label, sizeof(label), "Ask for %s", pn(id));
-        if (strcmp(label, last) != 0) {
-            tb_set(g_traddwin, "v2tr_addtext", label);
-            snprintf(last, sizeof(last), "%s", label);
+    static char last_text[96] = "";
+    static uint32_t last_idx = 0;
+    if (text && strcmp(text, last_text) == 0 && last_idx) return last_idx;
+    uint32_t found = 0;
+    if (text && *text) {
+        char nb[96];
+        for_each_tag([&](uint32_t, uint32_t idx) {
+            if (found || !country_alive(country_at((int)idx))) return;
+            if (_stricmp(name_of(idx, nb, sizeof(nb)), text) == 0) found = idx;
+        });
+    }
+    if (found && g_dip_sel_off < 0) {
+        uintptr_t want = country_at((int)found);
+        for (int off = 0x5C; off < 0x300; off += 4)
+            if (!IsBadReadPtr((void*)(g_dipobj + off), 4) && rd<uintptr_t>(g_dipobj + off) == want) { g_dip_sel_off = off; break; }
+        logf("diplomacy: '%s' -> %s, selected country pointer at +0x%X", text, cn(found), g_dip_sel_off);
+    }
+    if (!found && g_dip_sel_off >= 0) {
+        int i = country_index_of_ptr(rd<uintptr_t>(g_dipobj + g_dip_sel_off));
+        if (i > 0) found = (uint32_t)i;
+    }
+    if (text && strcmp(text, last_text) != 0) {
+        if (!found) logf("diplomacy: could not match the country name '%s'", text);
+        snprintf(last_text, sizeof(last_text), "%s", text);
+    }
+    last_idx = found;
+    return found;
+}
+extern "C" void __cdecl tcp_on_dip_treaty() {
+    uint32_t sel = g_dip_sel;
+    if (!sel || sel == player_index()) return;
+    if (g_tr_partner != sel) {
+        treaty_clear();
+        g_tr_partner = sel;
+        snprintf(g_tr_status, sizeof(g_tr_status), "Turn on 'Pick on map' and click provinces, or use '+ My people' / '+ Their people'.");
+    }
+    popcult_refresh(player_index(), sel);
+    treaty_open();
+}
+extern "C" void __cdecl tcp_on_dip_bloc() {
+    uint32_t sel = g_dip_sel, me = player_index();
+    if (!sel || sel == me) return;
+    const char* theirs = cached_bloc(sel);
+    const char* mine = cached_bloc(me);
+    if (theirs) {  // show that bloc
+        collect_blocs();
+        for (int k = 0; k < g_nblocs; ++k)
+            if (_stricmp(g_blocs[k].name, theirs) == 0) g_bloc_page = k;
+        if (!(mine && _stricmp(mine, theirs) == 0)) g_bloc_status[0] = 0;
+        tcp_on_blocs_click();
+        return;
+    }
+    tcp_on_diplo_invite();
+}
+extern "C" void __cdecl tcp_on_dip_blocs() { tcp_on_blocs_click(); }
+}  // namespace
+asm(".text\n"
+    "    .globl _tcp_dip_treaty_thunk\n_tcp_dip_treaty_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_treaty\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_dip_bloc_thunk\n_tcp_dip_bloc_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_bloc\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_dip_blocs_thunk\n_tcp_dip_blocs_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_blocs\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_dipctor_hook\n_tcp_dipctor_hook:\n    movl  4(%esp), %eax\n    movl  %eax, _g_dipobj\n    pushl %ebp\n    movl  %esp, %ebp\n    pushl $-1\n    jmp   *_g_dipctor_cont\n");
+namespace {
+
+void dipbar_sync() {
+    bool open = dip_visible();
+    uint32_t me = player_index();
+    uint32_t sel = open ? dip_selected() : 0;
+    g_dip_sel = sel;
+    bool want = open && sel && sel != me;
+    if (want && !g_dipbar) {
+        g_dipbar = gui_create("v2dip_bar");
+        if (g_dipbar) {
+            subscribe(g_dipbar, "v2dip_treaty", g_dip_treaty_glue, &tcp_dip_treaty_thunk);
+            subscribe(g_dipbar, "v2dip_bloc", g_dip_bloc_glue, &tcp_dip_bloc_thunk);
+            subscribe(g_dipbar, "v2dip_blocs", g_dip_blocs_glue, &tcp_dip_blocs_thunk);
+            logf("diplomacy: action bar created");
         }
     }
-    if (win_visible(g_traddwin) != want) win_show(g_traddwin, want);
+    if (!g_dipbar) return;
+    if (want) {
+        static uint32_t last_sel = 0;
+        static char last_key[160] = "";
+        const char* theirs = cached_bloc(sel);
+        const char* mine = cached_bloc(me);
+        char bd[64], label[64], info[200], key[160];
+        if (theirs && mine && _stricmp(theirs, mine) == 0) snprintf(label, sizeof(label), "In your bloc");
+        else if (theirs) snprintf(label, sizeof(label), "View %s", bloc_display(theirs, bd, sizeof(bd)));
+        else if (!mine) snprintf(label, sizeof(label), "Form a bloc");
+        else snprintf(label, sizeof(label), "Invite to bloc");
+        int rel = relation(me, sel);
+        snprintf(info, sizeof(info), "%s   -   Bloc: %s   -   Relations: %s%+d" C_END, cn(sel),
+                 theirs ? bloc_display(theirs, bd, sizeof(bd)) : "none", rel >= 0 ? C_GREEN : C_RED, rel);
+        snprintf(key, sizeof(key), "%u|%s|%s", sel, label, info);
+        if (sel != last_sel || strcmp(key, last_key) != 0) {
+            tb_set(g_dipbar, "v2dip_bloctext", label);
+            tb_set(g_dipbar, "v2dip_info", info);
+            last_sel = sel;
+            snprintf(last_key, sizeof(last_key), "%s", key);
+        }
+    }
+    if (win_visible(g_dipbar) != want) win_show(g_dipbar, want);
+}
+void install_dipwin_capture() {
+    uint8_t* site = (uint8_t*)R(VA_DIPWIN_CTOR);
+    const uint8_t expect[5] = {0x55, 0x8B, 0xEC, 0x6A, 0xFF};
+    if (memcmp(site, expect, 5) != 0) { logf("diplomacy: window constructor differs; diplomacy buttons off"); return; }
+    g_dipctor_cont = R(VA_DIPWIN_CTOR) + 5;
+    uint8_t jmp[5] = {0xE9};
+    int32_t rel = (int32_t)((uintptr_t)&tcp_dipctor_hook - (R(VA_DIPWIN_CTOR) + 5));
+    memcpy(jmp + 1, &rel, 4);
+    logf(write_code(R(VA_DIPWIN_CTOR), jmp, 5) ? "diplomacy: window hook installed" : "diplomacy: VirtualProtect failed");
 }
 
 // ---- console ----
@@ -3366,7 +3463,7 @@ extern "C" ConsoleResult* __cdecl cmd_treaty_population(ConsoleResult* out, ArgV
     return reply(out, true, "%s", g_tr_status);
 }
 
-void drop_diplo_window() { win_destroy(g_diplowin); win_destroy(g_traddwin); win_destroy(g_treatywin); }
+void drop_diplo_window() { win_destroy(g_diplowin); win_destroy(g_traddwin); win_destroy(g_treatywin); win_destroy(g_dipbar); }
 
 void install_bloc_tick() {
     uintptr_t site = R(VA_DAYTICK_CALL);
@@ -3458,7 +3555,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-25h (swap: shared cultures stay, 30% cap; loc fix; frame fix)");
+    logf("TGC Convert Pop build 2026-10-26a (diplomacy action bar, new treaty window)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
@@ -3476,7 +3573,10 @@ extern "C" __declspec(dllexport) int TGL_PluginInit(const TGL_HostApi* host) {
     install_blocs();
     if (g_blocs_ok) install_bloc_map();
     if (g_blocs_ok) install_bloc_tick();
-    if (g_blocs_ok && g_tab_enabled) install_diplo_button();
+    if (g_blocs_ok && g_tab_enabled) {
+        install_dipwin_capture();
+        install_diplo_button();
+    }
     return install_commands() ? 0 : 2;
 }
 
