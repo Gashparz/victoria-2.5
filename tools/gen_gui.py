@@ -41,7 +41,7 @@ def button(name, x, y, text, tip=None, sprite="GFX_button_standard_144", font=BT
     if tip:
         key = "V2CMD_TT_" + name.upper()
         tips[key] = tip
-        t = f'\n\t\t\ttooltip = "{key}"\n\t\t\ttooltipText = "{key}"'
+        t = f'\n\t\t\ttooltipText = "{key}"'
     return f"""		guiButtonType = {{
 			name = "{name}"
 			quadTextureSprite = "{sprite}"
@@ -103,7 +103,6 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 			quadTextureSprite = "GFX_topbar_button_military"
 			position = { x = 0 y = 5 }
 			clicksound = click
-			tooltip = "V2CMD_TT_TAB"
 			tooltipText = "V2CMD_TT_TAB"
 		}
 		textBoxType = {
@@ -244,7 +243,6 @@ def side_button(win, btn, txtbox, y, text, tip):
 			buttonText = " "
 			buttonFont = "vic_18_black"
 			clicksound = click
-			tooltip = "{key}"
 			tooltipText = "{key}"
 		}}
 		instantTextBoxType = {{

@@ -17,7 +17,6 @@ guiTypes = {
 			quadTextureSprite = "GFX_topbar_button_military"
 			position = { x = 0 y = 5 }
 			clicksound = click
-			tooltip = "V2CMD_TT_TAB"
 			tooltipText = "V2CMD_TT_TAB"
 		}
 		textBoxType = {
@@ -97,7 +96,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2CMD_BLOCS"
 			tooltipText = "V2CMD_TT_V2CMD_BLOCS"
 		}
 		guiButtonType = {
@@ -108,7 +106,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2CMD_TREATY"
 			tooltipText = "V2CMD_TT_V2CMD_TREATY"
 		}
 		guiButtonType = {
@@ -355,7 +352,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_BACK"
 			tooltipText = "V2CMD_TT_V2BLOC_BACK"
 		}
 		instantTextBoxType = {
@@ -1336,7 +1332,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_PREV"
 			tooltipText = "V2CMD_TT_V2BLOC_PREV"
 		}
 		instantTextBoxType = {
@@ -1358,7 +1353,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_NEXT"
 			tooltipText = "V2CMD_TT_V2BLOC_NEXT"
 		}
 		guiButtonType = {
@@ -1369,7 +1363,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_CREATE"
 			tooltipText = "V2CMD_TT_V2BLOC_CREATE"
 		}
 		instantTextBoxType = {
@@ -1391,7 +1384,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_IDENTITY"
 			tooltipText = "V2CMD_TT_V2BLOC_IDENTITY"
 		}
 		instantTextBoxType = {
@@ -1413,7 +1405,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_DISBAND"
 			tooltipText = "V2CMD_TT_V2BLOC_DISBAND"
 		}
 		guiButtonType = {
@@ -1424,7 +1415,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_MAPBTN"
 			tooltipText = "V2CMD_TT_V2BLOC_MAPBTN"
 		}
 		instantTextBoxType = {
@@ -1481,7 +1471,6 @@ guiTypes = {
 			buttonText = " "
 			buttonFont = "vic_18_black"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2BLOC_INVITE"
 			tooltipText = "V2CMD_TT_V2BLOC_INVITE"
 		}
 		instantTextBoxType = {
@@ -1516,7 +1505,6 @@ guiTypes = {
 			buttonText = " "
 			buttonFont = "vic_18_black"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_ADDBTN"
 			tooltipText = "V2CMD_TT_V2TR_ADDBTN"
 		}
 		instantTextBoxType = {
@@ -1855,7 +1843,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_PICK"
 			tooltipText = "V2CMD_TT_V2TR_PICK"
 		}
 		instantTextBoxType = {
@@ -1877,7 +1864,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_MINE"
 			tooltipText = "V2CMD_TT_V2TR_MINE"
 		}
 		guiButtonType = {
@@ -1888,7 +1874,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_THEIRS"
 			tooltipText = "V2CMD_TT_V2TR_THEIRS"
 		}
 		guiButtonType = {
@@ -1899,7 +1884,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_CLEAR"
 			tooltipText = "V2CMD_TT_V2TR_CLEAR"
 		}
 		guiButtonType = {
@@ -1910,7 +1894,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_PROV"
 			tooltipText = "V2CMD_TT_V2TR_PROV"
 		}
 		guiButtonType = {
@@ -1921,7 +1904,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_POPOPT"
 			tooltipText = "V2CMD_TT_V2TR_POPOPT"
 		}
 		instantTextBoxType = {
@@ -1943,7 +1925,6 @@ guiTypes = {
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltip = "V2CMD_TT_V2TR_POP"
 			tooltipText = "V2CMD_TT_V2TR_POP"
 		}
 	}
