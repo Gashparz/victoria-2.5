@@ -8,7 +8,7 @@ TITLE = "vic_22_black"; HEAD = "vic_18_black"; TXT = "Arial12_black"; BTN = "vic
 sprites = {}   # name -> (texture, w, h, border)
 tips = {}      # loc key -> text
 def frame(name, w, h):
-    sprites[name] = ("v2cmd_frame.tga", w, h, 60)
+    sprites[name] = ("v2cmd_frame.tga", w, h, 94)
     return name
 def bar(w, h=22):
     n = f"GFX_v2cmd_hdr_{w}x{h}"; sprites[n] = ("v2cmd_header.tga", w, h, 3); return n

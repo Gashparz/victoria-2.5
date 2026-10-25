@@ -389,11 +389,20 @@ _tcp_loc_thunk:
     ret
 )");
 namespace {
+// 0x9AD9D0 returns the c_str of the entry's key (a std::string at entry+0). For keys under 16 chars that
+// pointer IS the entry; the English text is the next std::string (entry+0x1C, MSVC layout: size +0x10, cap +0x14).
 const char* loc(const char* key) {
-    if (!key || !*key) return nullptr;
+    if (!key || !*key || strlen(key) >= 16) return nullptr;
     uintptr_t t = reinterpret_cast<uintptr_t (*)()>(R(VA_LOC_TABLE))();
     const char* r = t ? tcp_loc_thunk(R(VA_LOC_FIND), t, key) : nullptr;
-    return r && *r ? r : nullptr;
+    if (!r || strcmp(r, key) != 0) return nullptr;
+    uintptr_t e = (uintptr_t)r;
+    if (rd<uint32_t>(e + 0x14) != 15) return nullptr;  // key must be stored inline (cap 15)
+    uintptr_t v = e + 0x1C;
+    uint32_t size = rd<uint32_t>(v + 0x10), cap = rd<uint32_t>(v + 0x14);
+    if (size == 0 || size > 300 || cap < size) return nullptr;
+    const char* txt = cap >= 16 ? rd<const char*>(v) : reinterpret_cast<const char*>(v);
+    return txt && *txt ? txt : nullptr;
 }
 const char* culture_display(uintptr_t c) {
     const char* k = culture_name(c);
@@ -2870,8 +2879,13 @@ Eval eval_provinces(uint32_t me, uint32_t ai) {
 
 struct PopEval {
     Eval e;
-    uint64_t they_get, they_lose;
+    uint64_t they_get, they_lose, shared;
 };
+// A pop of culture c may be sent to `target` only if c is target's (primary or accepted) and NOT the
+// source's. Cultures both countries count as their own (e.g. German in Germany and in Austria-Hungary) stay.
+bool movable_to(uintptr_t target, uintptr_t source, uintptr_t c) {
+    return c && national_culture(target, c) && !national_culture(source, c);
+}
 // Candidate cultures for the "one culture" options: their nationals living with you, yours living with them.
 void popcult_refresh(uint32_t me, uint32_t ai) {
     g_tr_npopcult = 0;
@@ -2883,7 +2897,7 @@ void popcult_refresh(uint32_t me, uint32_t ai) {
         for (int i = 0; i < np; ++i)
             for_each_pop(provs[i], [&](uintptr_t pop, int) {
                 uintptr_t c = rd<uintptr_t>(pop + 0x6C);
-                if (!pop_alive(pop) || !national_culture(nation, c)) return;
+                if (!pop_alive(pop) || !movable_to(nation, owner == me ? cm : ca, c)) return;
                 for (int k = 0; k < g_tr_npopcult; ++k)
                     if (g_tr_popcult[k] == c) return;
                 if (g_tr_npopcult < 64) g_tr_popcult[g_tr_npopcult++] = c;
@@ -2895,7 +2909,7 @@ void popcult_refresh(uint32_t me, uint32_t ai) {
 uintptr_t popopt_culture() { return g_tr_popopt >= 3 && g_tr_popopt - 3 < g_tr_npopcult ? g_tr_popcult[g_tr_popopt - 3] : 0; }
 void popopt_label(char* out, size_t n) {
     uintptr_t c = popopt_culture();
-    if (c) snprintf(out, n, "Only %s", culture_name(c));
+    if (c) snprintf(out, n, "Only %s", culture_display(c));
     else snprintf(out, n, "%s", g_tr_popopt == 1 ? "Send theirs home" : g_tr_popopt == 2 ? "Bring yours home" : "Both ways");
 }
 PopEval eval_population(uint32_t me, uint32_t ai) {
@@ -2905,16 +2919,25 @@ PopEval eval_population(uint32_t me, uint32_t ai) {
     if (!ai || !country_alive(ca)) { e.add(0, "No treaty partner."); return r; }
     if (at_war_with(me, ai)) { e.add(0, "You are at war: make peace first."); return r; }
     uintptr_t only = popopt_culture();
+    if (only && national_culture(ca, only) && national_culture(cm, only)) {
+        e.add(0, "%s is a culture of both countries: it stays where it is.", culture_display(only));
+        return r;
+    }
     bool to_them = g_tr_popopt != 2 && (!only || national_culture(ca, only));
     bool to_you = g_tr_popopt != 1 && (!only || national_culture(cm, only));
+    uint64_t my_total = 0;
     static uintptr_t provs[2048];
     uint64_t foreign_faith = 0, ai_total = 0;
     uintptr_t ai_rel = rd<uintptr_t>(ca + 0xE68);
     int np = owned_provinces((int)me, provs, 2048);
     for (int i = 0; i < np && to_them; ++i)
         for_each_pop(provs[i], [&](uintptr_t pop, int) {
+            if (!pop_alive(pop)) return;
+            uint32_t sz = rd<uint32_t>(pop + 0x58);
+            my_total += sz;
             uintptr_t c = rd<uintptr_t>(pop + 0x6C);
-            if (pop_alive(pop) && (only ? c == only : national_culture(ca, c))) r.they_get += rd<uint32_t>(pop + 0x58);
+            if (only ? c == only : movable_to(ca, cm, c)) r.they_get += sz;
+            else if (!only && national_culture(ca, c) && national_culture(cm, c)) r.shared += sz;
         });
     np = owned_provinces((int)ai, provs, 2048);
     for (int i = 0; i < np; ++i)
@@ -2923,12 +2946,25 @@ PopEval eval_population(uint32_t me, uint32_t ai) {
             uint32_t sz = rd<uint32_t>(pop + 0x58);
             ai_total += sz;
             uintptr_t c = rd<uintptr_t>(pop + 0x6C);
-            if (to_you && (only ? c == only : national_culture(cm, c))) {
+            if (to_you && (only ? c == only : movable_to(cm, ca, c))) {
                 r.they_lose += sz;
                 if (rd<uintptr_t>(pop + 0x70) != ai_rel) foreign_faith += sz;
             }
         });
+    if (r.shared) {
+        char sh[24];
+        fmt_people(r.shared, sh, sizeof(sh));
+        e.add(0, "%s of your people share a culture with them and stay.", sh);
+    }
     if (!r.they_get && !r.they_lose) { e.add(0, "Nobody to move with this option."); return r; }
+    // safety: no treaty may uproot more than 30%% of either country
+    if ((my_total && r.they_get * 10 > my_total * 3) || (ai_total && r.they_lose * 10 > ai_total * 3)) {
+        Eval keep = e;
+        e = Eval{};
+        e.add(0, "Too large: it would move more than 30%% of a country's people.");
+        for (int i = 0; i < keep.n; ++i) e.add(0, "%s", keep.why[i]);
+        return r;
+    }
     e.possible = true;
     int c = 30;
     e.add(0, "base 30");
@@ -3055,12 +3091,19 @@ void treaty_propose_population() {
         return;
     }
     uintptr_t only = popopt_culture();
+    uintptr_t cm = country_at((int)me), ca = country_at((int)ai);
     if (only) {
-        if (national_culture(country_at((int)me), only)) run_migrate_all(ai, me, culture_name(only));
+        if (national_culture(cm, only)) run_migrate_all(ai, me, culture_name(only));
         else run_migrate_all(me, ai, culture_name(only));
     } else {
-        if (g_tr_popopt != 1) run_migrate_all(ai, me);  // your nationals living there come to you
-        if (g_tr_popopt != 2) run_migrate_all(me, ai);  // theirs living with you go to them
+        // culture by culture, and only cultures that belong to one side (shared ones stay)
+        popcult_refresh(me, ai);
+        for (int k = 0; k < g_tr_npopcult; ++k) {
+            uintptr_t c = g_tr_popcult[k];
+            if (g_tr_popopt != 1 && movable_to(cm, ca, c)) run_migrate_all(ai, me, culture_name(c));
+            if (g_tr_popopt != 2 && movable_to(ca, cm, c)) run_migrate_all(me, ai, culture_name(c));
+        }
+        popcult_refresh(me, ai);
     }
     snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: about %llu people came to you, %llu went to them.", cn(ai),
              rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", (unsigned long long)pe.they_lose, (unsigned long long)pe.they_get);
@@ -3415,7 +3458,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-25g (native UI, names, tooltips, bloc buttons)");
+    logf("TGC Convert Pop build 2026-10-25h (swap: shared cultures stay, 30% cap; loc fix; frame fix)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

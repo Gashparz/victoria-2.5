@@ -27,8 +27,8 @@ w = np.clip((dist - 16) / 10.0, 0, 1)
 f = 1 + w * (target / full - 1)
 a[..., :3] = np.clip(a[..., :3] * f[..., None], 0, 255)
 crop = Image.fromarray(a.astype(np.uint8), "RGBA")
-C = 64          # corner size (holds the gold ornaments)
-S = 320         # output texture size
+C = 94          # corner size: thirds of the texture, like the game's tiles_dialog_type2 (282, border 94)
+S = 282         # output texture size
 mid = S - 2 * C
 t = Image.new("RGBA", (S, S))
 # corners
