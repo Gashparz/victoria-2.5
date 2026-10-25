@@ -2307,10 +2307,10 @@ void bloc_panel_subscribe_paging() {
     subscribe(g_blocwin, "v2bloc_next", g_bloc_next_glue, &tcp_bloc_next_thunk);
 }
 
-// ---- "Invita in bloc" button on the diplomacy screen ----
-// Diplomacy view = world+0xB24 -> vt 0x124 (); its +0x20 = window (+0x67 visible), its +0x24 -> selected
-// country CTag at +0x128 / +0x12C (as read by the diplomatic map mode at 0x007FCD09). Visibility is synced
-// every frame from CInGameIdler_Update (vtable slot 0x00E0A350, thiscall 1 arg).
+// ---- "Invita <TAG> in bloc" button next to the province window ----
+// world+0xB24 -> vt 0x124 () = the province/country view shown when you click on the map: +0x20 = window
+// (+0x67 visible), +0x24 -> selected country CTag at +0x128 / +0x12C (read the same way by the diplomatic map
+// mode at 0x007FCD09). Visibility and label are synced from CInGameIdler_Update (vtable slot 0x00E0A350).
 constexpr uintptr_t VA_IDLER_SLOT = 0x00E0A350, VA_IDLER_UPDATE = 0x00654D80;
 typedef int(__fastcall* IdlerFn)(void*, void*, uint32_t);
 IdlerFn g_idler_orig = nullptr;
@@ -2348,7 +2348,7 @@ extern "C" void __cdecl tcp_on_diplo_invite() {
     if (!country_bloc(country_at((int)me), bloc, sizeof(bloc))) {
         snprintf(g_bloc_status, sizeof(g_bloc_status), "Nu esti in niciun bloc. Fa unul: bloc_add <nume> <tag-ul tau>");
     } else if (!sel || sel == me) {
-        snprintf(g_bloc_status, sizeof(g_bloc_status), "Alege intai o alta tara in fereastra de diplomatie.");
+        snprintf(g_bloc_status, sizeof(g_bloc_status), "Da click pe o alta tara pe harta.");
     } else {
         BlocInfo* b = find_bloc(bloc);
         if (b && b->leader != me) {
@@ -2383,17 +2383,31 @@ int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     static int skip = 0;
     if (++skip < 6) return r;  // ~10 checks a second is plenty
     skip = 0;
-    bool open = diplomacy_open(nullptr);
+    uint32_t sel = 0;
+    bool open = diplomacy_open(&sel);
     bool want = false;
-    if (open) {
-        char b[64];
-        want = country_bloc(country_at((int)player_index()), b, sizeof(b));
-    }
+    char mine[64] = "";
+    uint32_t me = player_index();
+    if (open && sel && sel != me) want = country_bloc(country_at((int)me), mine, sizeof(mine));
     if (want && !g_diplowin) {
         g_diplowin = gui_create("v2bloc_diplo");
         if (g_diplowin) {
             subscribe(g_diplowin, "v2bloc_invite", g_diplo_glue, &tcp_diplo_invite_thunk);
             logf("diplomacy: bloc invite button created");
+        }
+    }
+    static uint32_t last_sel = 0xFFFFFFFF;
+    static char last_label[64] = "";
+    if (g_diplowin && want) {
+        char label[64], tb[4], theirs[64];
+        if (country_bloc(country_at((int)sel), theirs, sizeof(theirs)))
+            snprintf(label, sizeof(label), "%s: in blocul %s", tag_of(sel, tb), theirs);
+        else
+            snprintf(label, sizeof(label), "Invita %s in bloc", tag_of(sel, tb));
+        if (sel != last_sel || strcmp(label, last_label) != 0) {
+            tb_set(g_diplowin, "v2bloc_invite_text", label);
+            last_sel = sel;
+            snprintf(last_label, sizeof(last_label), "%s", label);
         }
     }
     if (g_diplowin && win_visible(g_diplowin) != want) win_show(g_diplowin, want);
@@ -2499,7 +2513,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-25b (power blocs + diplomacy invite)");
+    logf("TGC Convert Pop build 2026-10-25c (power blocs + invite button)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

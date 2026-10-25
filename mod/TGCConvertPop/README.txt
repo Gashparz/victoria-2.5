@@ -56,8 +56,8 @@ Console commands (single player)
   Cohesion 0-100 (relations with the leader, size, shared religion, members at war with each other):
         below 20 (Fracturat) only the leader's wars pull the bloc in.
   The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects, members table.
-  Diplomacy screen: when you lead a bloc, an "Invita in bloc" tab appears next to the Crisis tab; it invites
-        the country selected there (with the yesmen cheat on, the AI always accepts). The result shows in the
+  Invite button: click a country on the map; next to the province window an "Invita <TAG> in bloc" button
+        appears (when you lead a bloc). With the yesmen cheat on, the AI always accepts. The result shows in the
         bloc panel, which opens on your bloc.
 
 Pop merging: the game merges a moving pop into any pop of the same type and religion,

@@ -67,7 +67,7 @@ The **Blocuri** button in the COMENZI window opens a panel that lists every bloc
   - Sovereign empire: the leader gains prestige for every member.
   - Religious union: in every member, one small pop converts to the leader's religion.
 - **Cohesion.** It runs from 0 to 100 and comes from relations with the leader, bloc size, shared religion and members fighting each other. Below 20 (fractured), only the leader's wars pull the bloc in.
-- **Invitations.** `bloc_invite` lets the AI decide, while `bloc_add` forces a country in. On the **diplomacy screen**, a bloc leader also gets an **Invita in bloc** tab that invites the selected country. With the vanilla `yesmen` cheat on, the AI always accepts.
+- **Invitations.** `bloc_invite` lets the AI decide, while `bloc_add` forces a country in. In game, a bloc leader can click a country on the map: an **Invita <TAG> in bloc** button appears next to the province window. With the vanilla `yesmen` cheat on, the AI always accepts.
 - **Panel.** The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects and a members table with population, prestige, provinces and relations.
 
 **Bloc map:** `bloc_map` or the **Harta on/off** button in the panel switches the political map mode to bloc colours. Owner and occupier both show their bloc colour, and countries outside a bloc turn grey.
