@@ -1,21 +1,39 @@
 spriteTypes = {
-	# background of v2cmd_window (TGCConvertPop)
+	# TGCConvertPop windows (textures in gfx/interface/v2cmd_*.tga)
 	corneredTileSpriteType = {
-		name = "GFX_v2cmd_bg"
-		size = { x = 720 y = 612 }
-		textureFile = "gfx\\interface\\tiles_dialog_type2.tga"
-		borderSize = { x = 94 y = 94 }
+		name = "GFX_v2cmd_hdr_690x22"
+		size = { x = 690 y = 22 }
+		textureFile = "gfx\\interface\\v2cmd_header.tga"
+		borderSize = { x = 3 y = 3 }
 	}
 	corneredTileSpriteType = {
-		name = "GFX_v2treaty_bg"
-		size = { x = 720 y = 618 }
-		textureFile = "gfx\\interface\\tiles_dialog_type2.tga"
-		borderSize = { x = 94 y = 94 }
+		name = "GFX_v2cmd_bg"
+		size = { x = 760 y = 517 }
+		textureFile = "gfx\\interface\\v2cmd_frame.tga"
+		borderSize = { x = 60 y = 60 }
 	}
 	corneredTileSpriteType = {
 		name = "GFX_v2bloc_bg"
-		size = { x = 720 y = 570 }
-		textureFile = "gfx\\interface\\tiles_dialog_type2.tga"
-		borderSize = { x = 94 y = 94 }
+		size = { x = 760 y = 628 }
+		textureFile = "gfx\\interface\\v2cmd_frame.tga"
+		borderSize = { x = 60 y = 60 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2cmd_row_690x19"
+		size = { x = 690 y = 19 }
+		textureFile = "gfx\\interface\\v2cmd_row.tga"
+		borderSize = { x = 2 y = 2 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2treaty_bg"
+		size = { x = 760 y = 648 }
+		textureFile = "gfx\\interface\\v2cmd_frame.tga"
+		borderSize = { x = 60 y = 60 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2cmd_hdr_690x24"
+		size = { x = 690 y = 24 }
+		textureFile = "gfx\\interface\\v2cmd_header.tga"
+		borderSize = { x = 3 y = 3 }
 	}
 }

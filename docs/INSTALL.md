@@ -48,3 +48,13 @@ Look at `the_grand_loader.log` next to `v2game.exe`. Every hook writes one line 
 ## Uninstall
 
 Delete `mod\TGCConvertPop*` and `interface\zz_v2commands.*`.
+
+## Window textures (native look)
+
+The windows use parchment textures cut from the game's own `main_bg.dds` and `diplomacy_bg.dds`.
+They are not shipped here (game art). Create them once from your install (needs Python + Pillow + numpy):
+
+    python tools/make_textures.py "<Victoria 2>/gfx/interface" "<Victoria 2>/gfx/interface"
+
+This writes `v2cmd_frame.tga`, `v2cmd_header.tga` and `v2cmd_row.tga`. Also copy
+`localisation/zz_v2commands.csv` (button tooltips) into `<Victoria 2>/localisation/`.

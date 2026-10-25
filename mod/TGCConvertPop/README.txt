@@ -42,7 +42,7 @@ Console commands (single player)
         When a bloc member enters a war (declares, is attacked, or joins as an ally), every other
         living member joins the same side. Stored as the country flag bloc_<name>, so it is saved
         in the save game. Normal alliances are untouched. Crisis and rebel wars are not affected.
-        Panel: top bar tab COMMANDS -> "Blocs" button shows every bloc and its members.
+        Panel: top bar tab BLOCS -> "Power Blocs" shows every bloc and its members.
   bloc_map [on|off]   the political map mode shows each bloc in its own colour (others grey);
         also the "Map on/off" button in the bloc panel.
 
@@ -54,15 +54,16 @@ Console commands (single player)
         empire     leader +0.5 prestige per member per month
         religious  each month one small pop (<= 3000) per member converts to the leader's religion
   Cohesion 0-100 (relations with the leader, size, shared religion, members at war with each other):
-        below 20 (Fracturat) only the leader's wars pull the bloc in.
+        below 20 (Fractured) only the leader's wars pull the bloc in.
   The bloc panel shows one bloc per page: identity, leader, cohesion bar, effects, members table.
-  Invite button: click a country on the map; next to the province window an "Invite <TAG> to bloc" button
-        appears (when you lead a bloc). With the yesmen cheat on, the AI always accepts. The result shows in the
-        bloc panel, which opens on your bloc.
+  Without the console: click a country on the map; next to the province window a button appears:
+        "Form bloc with <Country>" (you have no bloc: founds "<Your country> Pact" with you as leader, then invites)
+        or "Invite <Country>" (only the leader can invite). With the yesmen cheat on, the AI always accepts.
+        The bloc panel also has Create/Leave, Identity, Disband and Bloc map buttons.
 
 Treaties (province exchange, population exchange)
-  Click a province on the map: a "Treaty: offer #id" / "Treaty: ask TAG for #id" button appears next to the
-  province window. Add provinces on both sides, then COMMANDS -> Treaties (or it opens by itself).
+  Click a province on the map: an "Offer <Province>" / "Ask for <Province>" button appears next to the
+  province window. Add provinces on both sides, then BLOCS -> Treaties (or it opens by itself).
   The treaty window shows the AI's chance and every reason:
     province exchange    value of what each side gives (population, its own nation's share, cores),
                          -25 if it would give up land of its own nation, +15 if it gets its own people back,
@@ -85,16 +86,28 @@ fix_merge_everywhere=1 in mod\TGCConvertPop.ini fixes it for the whole game too.
 Province ids: console command "showprovinceid", then hover a province.
 Names are script names (polish, catholic, farmers).
 
-Top bar tab "COMMANDS" (experimental)
-  A tab next to Military opens a window with this command list (ESC or X closes it).
-  Files: interface\zz_v2commands.gui and interface\zz_v2commands.gfx in the game folder (work with any mod).
+Top bar tab "BLOCS" (experimental)
+  A tab next to Military opens the Diplomacy+ overview: Power Blocs, Treaties and a command reference.
+  Windows use the game's own parchment look; buttons have tooltips; countries, provinces and cultures
+  are shown by name.
+  Files in the game folder (work with any mod):
+    interface\zz_v2commands.gui, interface\zz_v2commands.gfx
+    gfx\interface\v2cmd_frame.tga, v2cmd_header.tga, v2cmd_row.tga   (made from main_bg / diplomacy_bg)
+    localisation\zz_v2commands.csv   (tooltip texts)
   Move the tab: edit position = { x = 1090 y = 0 } of "v2cmd_tab" in zz_v2commands.gui.
   Turn it off: topbar_tab=0 in mod\TGCConvertPop.ini. The log shows "tab: ..." lines.
 
-Requirements: The Grand Loader (dinput8.dll) in the game folder - see INSTALL.md.
-Optional: Victoria 2 Unofficial Patch 3.05 (V2DLL); keep PLAYER_BUTTONS=0 for the top bar tab.
+What is installed in the game folder
+  dinput8.dll           The Grand Loader (loads this plugin)
+  lua51.dll             V2DLL from Victoria 2 Unofficial Patch 3.05 0.6.2.4
+  lua51_real.dll        the game's original lua51.dll (V2DLL forwards to it)
+  eventmusic.dll        part of the patch
+  v2dll_settings.ini    patch settings (UI extras that need the patch's own files are off)
+  Logs\                 v2dll.log
+  mod\TGCConvertPop.*   this mod
 
-Logs: the_grand_loader.log next to v2game.exe.
+Logs: the_grand_loader.log (commands) and Logs\v2dll.log (patch), next to v2game.exe.
 
-Uninstall: delete mod\TGCConvertPop* and interface\zz_v2commands.*
-Source, issues: see the project's GitHub page. License: MIT.
+Uninstall the patch only: delete lua51.dll, eventmusic.dll, v2dll_settings.ini,
+then rename lua51_real.dll to lua51.dll.
+Uninstall the commands: delete dinput8.dll and mod\TGCConvertPop*.

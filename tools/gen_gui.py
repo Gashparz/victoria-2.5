@@ -1,38 +1,87 @@
-# Generates zz_v2commands.gui/.gfx (the COMMANDS tab, its window, the bloc panel and the invite button).
+# Generates zz_v2commands.gui / .gfx and localisation/zz_v2commands.csv for TGCConvertPop.dll.
+# Native Victoria 2 look: parchment frame (v2cmd_frame.tga, built by make_textures.py from main_bg.dds),
+# grey header bars and light table rows (from diplomacy_bg.dds), black fonts, tooltips on every button.
 import sys, os
 out = sys.argv[1] if len(sys.argv) > 1 else "."
-W = 720
-H_ = "vic_18"; L = "Arial12"
-lines = [
- (H_, "Open the console with ~ and type a command. Province ids: showprovinceid, then hover a province."),
- None,
- (H_, "POPULATION"),
- (L, "convert_pop <prov> [culture|-|owner] [religion|-|owner] [filters]     change culture/religion"),
- (L, "list_prov_cultures <prov>   /   list_prov_religions <prov>      pops: id | type | culture/religion | size"),
- (L, "migrate_pop <from> <to> <filters>        move matching pops      e.g. migrate_pop 123 555 polish catholic"),
- (L, "migrate_all_pops <FROM> <TO> [accepted] [filters]    TO's culture living in FROM, spread evenly"),
- (L, "      e.g. migrate_all_pops GER POL      migrate_all_pops GER POL accepted"),
- (L, "double_pop <prov> [filters]      scale_pop <prov> <percent> [filters]      (200 = double, 50 = half)"),
- (L, "scale_country_pop <TAG> <percent> [filters]     whole country      e.g. scale_country_pop SER 200 serb"),
- (L, "Filter = culture, religion, pop type (farmers) or pop id. A pop must match every filter."),
- None,
- (H_, "CULTURES AND CORES"),
- (L, "accept_culture <TAG> [cultures]     unaccept_culture <TAG> <cultures>      (TAG alone = list)"),
- (L, "add_core <TAG> <prov> [more]      remove_core <TAG> <prov> [more]      e.g. add_core SER 652 653"),
- None,
- (H_, "POWER BLOCS (Victoria 3 style)"),
- (L, "bloc_add <name> <TAG> [more tags]  (forced)      bloc_invite <bloc> <TAG>  (the AI accepts or refuses)"),
- (L, "bloc_identity <bloc> military|trade|empire|religious      bloc_leader <TAG>      bloc_info [bloc]"),
- (L, "bloc_remove <TAG>     bloc_list     bloc_disband <name>     bloc_map [on|off]  (political map by bloc)"),
- (L, "In a war, members join the side of the member involved. The Blocs panel shows cohesion and identity effects."),
- (L, "Click a country on the map: an 'Invite ... to bloc' button appears next to the province window (leader only)."),
- None,
- (H_, "TREATIES"),
- (L, "Treaties window: 'Pick on map' adds every province you click; '+ My people' / '+ Their people' add whole regions."),
- (L, "treaty <TAG> [give <ids>] [take <ids>]     treaty_propose     treaty_population [TAG]   (each side gets its own people)"),
- None,
- (L, "Log: the_grand_loader.log next to v2game.exe. Population totals refresh on the next game day."),
-]
+W = 760
+TITLE = "vic_22_black"; HEAD = "vic_18_black"; TXT = "Arial12_black"; BTN = "vic_18_black"
+sprites = {}   # name -> (texture, w, h, border)
+tips = {}      # loc key -> text
+def frame(name, w, h):
+    sprites[name] = ("v2cmd_frame.tga", w, h, 60)
+    return name
+def bar(w, h=22):
+    n = f"GFX_v2cmd_hdr_{w}x{h}"; sprites[n] = ("v2cmd_header.tga", w, h, 3); return n
+def rowbg(w, h=19):
+    n = f"GFX_v2cmd_row_{w}x{h}"; sprites[n] = ("v2cmd_row.tga", w, h, 2); return n
+def tbox(name, x, y, font, w, h, fmt="left", text=" "):
+    return f"""		instantTextBoxType = {{
+			name = "{name}"
+			position = {{ x = {x} y = {y} }}
+			font = "{font}"
+			borderSize = {{ x = 0 y = 0 }}
+			maxWidth = {w}
+			maxHeight = {h}
+			text = "{text}"
+			format = {fmt}
+			fixedsize = yes
+		}}
+"""
+def deco(name, sprite, x, y):
+    # background piece (a plain button, the same way the window backgrounds are drawn)
+    return f"""		guiButtonType = {{
+			name = "{name}"
+			quadTextureSprite = "{sprite}"
+			position = {{ x = {x} y = {y} }}
+			Orientation = "UPPER_LEFT"
+		}}
+"""
+def button(name, x, y, text, tip=None, sprite="GFX_button_standard_144", font=BTN):
+    t = ""
+    if tip:
+        key = "V2CMD_TT_" + name.upper()
+        tips[key] = tip
+        t = f'\n\t\t\ttooltip = "{key}"\n\t\t\ttooltipText = "{key}"'
+    return f"""		guiButtonType = {{
+			name = "{name}"
+			quadTextureSprite = "{sprite}"
+			position = {{ x = {x} y = {y} }}
+			buttonText = "{text}"
+			buttonFont = "{font}"
+			Orientation = "UPPER_LEFT"
+			clicksound = click{t}
+		}}
+"""
+def window_head(name, w, h, bgsprite, title_box=None, title=" "):
+    s = f"""
+	windowType = {{
+		name = "{name}"
+		backGround = "Background"
+		position = {{ x = -{w//2} y = -{h//2} }}
+		size = {{ x = {w} y = {h} }}
+		moveable = 1
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {{
+			name = "Background"
+			quadTextureSprite = "{frame(bgsprite, w, h)}"
+		}}
+		guiButtonType = {{
+			name = "close_button"
+			quadTextureSprite = "GFX_main_close_button"
+			position = {{ x = {w-58} y = 22 }}
+			Orientation = "UPPER_LEFT"
+			shortcut = "ESCAPE"
+		}}
+"""
+    if title_box:
+        s += tbox(title_box, 0, 26, TITLE, w, 30, "centre", title)
+    return s
+
 o = []
 add = o.append
 add('guiTypes = {\n')
@@ -54,13 +103,15 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 			quadTextureSprite = "GFX_topbar_button_military"
 			position = { x = 0 y = 5 }
 			clicksound = click
+			tooltip = "V2CMD_TT_TAB"
+			tooltipText = "V2CMD_TT_TAB"
 		}
 		textBoxType = {
 			name = "v2cmd_tab_shadow"
 			position = { x = 1 y = 5 }
 			font = "vic_18_black_bold"
 			borderSize = { x = 0 y = 0 }
-			text = "COMMANDS"
+			text = "BLOCS"
 			maxWidth = 124
 			maxHeight = 32
 			format = centre
@@ -71,7 +122,7 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 			position = { x = 0 y = 4 }
 			font = "vic_18_headline"
 			borderSize = { x = 0 y = 0 }
-			text = "COMMANDS"
+			text = "BLOCS"
 			maxWidth = 124
 			maxHeight = 32
 			format = centre
@@ -82,7 +133,7 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 			position = { x = 0 y = 40 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
-			text = "console"
+			text = "and treaties"
 			maxWidth = 124
 			maxHeight = 16
 			format = centre
@@ -90,290 +141,165 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 		}
 	}
 ''')
-body = []
-y = 58
-for i, ln in enumerate(lines):
-    if ln is None:
-        y += 10; continue
-    f, t = ln
-    h = 22 if f == H_ else 18
-    body.append(f'''		instantTextBoxType = {{
-			name = "v2cmd_line{i}"
-			position = {{ x = 30 y = {y} }}
-			font = "{f}"
-			borderSize = {{ x = 0 y = 0 }}
-			maxWidth = {W-60}
-			maxHeight = {h}
-			text = "{t}"
-			format = left
-			fixedsize = yes
-		}}
-''')
-    y += h + 2
-H = y + 24
-add(f'''
-	# Window opened by the tab
-	windowType = {{
-		name = "v2cmd_window"
-		backGround = "Background"
-		position = {{ x = -{W//2} y = -{H//2} }}
-		size = {{ x = {W} y = {H} }}
-		moveable = 1
-		dontRender = ""
-		horizontalBorder = ""
-		verticalBorder = ""
-		fullScreen = no
-		Orientation = "CENTER"
+tips["V2CMD_TT_TAB"] = "Power blocs, treaties and the console command reference."
 
-		guiButtonType = {{
-			name = "Background"
-			quadTextureSprite = "GFX_v2cmd_bg"
-		}}
-		guiButtonType = {{
-			name = "close_button"
-			quadTextureSprite = "GFX_main_close_button"
-			position = {{ x = {W-44} y = 12 }}
-			Orientation = "UPPER_LEFT"
-			shortcut = "ESCAPE"
-		}}
-		guiButtonType = {{
-			name = "v2cmd_blocs"
-			quadTextureSprite = "GFX_button_standard_144"
-			position = {{ x = 22 y = 12 }}
-			buttonText = "Blocs"
-			buttonFont = "vic_18_black"
-			Orientation = "UPPER_LEFT"
-		}}
-		guiButtonType = {{
-			name = "v2cmd_treaty"
-			quadTextureSprite = "GFX_button_standard_144"
-			position = {{ x = {W-200} y = 12 }}
-			buttonText = "Treaties"
-			buttonFont = "vic_18_black"
-			Orientation = "UPPER_LEFT"
-		}}
-		instantTextBoxType = {{
-			name = "v2cmd_header"
-			position = {{ x = 0 y = 16 }}
-			font = "vic_22"
-			borderSize = {{ x = 0 y = 0 }}
-			maxWidth = {W}
-			maxHeight = 30
-			text = "Console commands"
-			format = centre
-			fixedsize = yes
-		}}
-''')
+# ---------------- hub / command reference ----------------
+ref = [
+ ("H", "WITHOUT THE CONSOLE"),
+ ("T", "Blocs: found a bloc, set its identity, see members, cohesion and the bloc map mode."),
+ ("T", "Click any country on the map: 'Form bloc with ...' / 'Invite ...' appears next to the province window."),
+ ("T", "Treaties: click a province, then 'Offer ...' or 'Ask for ...' next to the province window, or turn on 'Pick on map'."),
+ ("H", "POPULATION  (console: press ~)"),
+ ("T", "convert_pop <prov> [culture|-|owner] [religion|-|owner] [filters]       list_prov_cultures <prov>"),
+ ("T", "migrate_pop <from> <to> <filters>        migrate_all_pops <FROM> <TO> [accepted] [filters]"),
+ ("T", "double_pop <prov>      scale_pop <prov> <percent>      scale_country_pop <TAG> <percent> [filters]"),
+ ("T", "Filters: culture, religion, pop type (farmers) or pop id. Province ids: showprovinceid, then hover."),
+ ("H", "CULTURES AND CORES"),
+ ("T", "accept_culture <TAG> [cultures]      unaccept_culture <TAG> <cultures>"),
+ ("T", "add_core <TAG> <prov> [more]      remove_core <TAG> <prov> [more]"),
+ ("H", "BLOCS AND TREATIES FROM THE CONSOLE"),
+ ("T", "bloc_add <name> <TAG..> (forced)   bloc_invite <bloc> <TAG>   bloc_leader <TAG>   bloc_disband <name>"),
+ ("T", "treaty <TAG> [give <ids>] [take <ids>]     treaty_propose     treaty_population [TAG]"),
+]
+y = 112
+body = []
+for i, (k, t) in enumerate(ref):
+    if k == "H":
+        y += 8
+        body.append(deco(f"v2cmd_hb{i}", bar(W - 70), 35, y))
+        body.append(tbox(f"v2cmd_line{i}", 45, y + 2, HEAD, W - 90, 20, "left", t))
+        y += 26
+    else:
+        body.append(tbox(f"v2cmd_line{i}", 45, y, TXT, W - 90, 18, "left", t))
+        y += 19
+y += 10
+body.append(tbox("v2cmd_foot", 45, y, TXT, W - 90, 18, "left",
+                 "Log: the_grand_loader.log next to v2game.exe. Population totals refresh on the next game day."))
+H = y + 50
+add(window_head("v2cmd_window", W, H, "GFX_v2cmd_bg", "v2cmd_header", "Diplomacy+"))
+add(button("v2cmd_blocs", 150, 66, "Power Blocs", "Open the power bloc panel: members, cohesion, identity, map mode.",
+           sprite="GFX_button_standard_177"))
+add(button("v2cmd_treaty", W - 150 - 177, 66, "Treaties", "Open the treaty window: exchange provinces or populations with another country.",
+           sprite="GFX_button_standard_177"))
 o += body
 add('\t}\n')
-# ---- bloc panel (one bloc per page, filled by TGCConvertPop.dll)
-ROWS = 16
-COLS = [(30, 175), (210, 125), (340, 95), (440, 95), (540, 150)]
-BH = 182 + (ROWS) * 18 + 100
-def tbox(name, x, y, font, w, h, fmt="left"):
-    return f"""		instantTextBoxType = {{
-			name = "{name}"
-			position = {{ x = {x} y = {y} }}
-			font = "{font}"
-			borderSize = {{ x = 0 y = 0 }}
-			maxWidth = {w}
-			maxHeight = {h}
-			text = " "
-			format = {fmt}
-			fixedsize = yes
-		}}
-"""
-def button(name, sprite, x, y, text):
-    return f"""		guiButtonType = {{
-			name = "{name}"
-			quadTextureSprite = "{sprite}"
-			position = {{ x = {x} y = {y} }}
-			buttonText = "{text}"
-			buttonFont = "vic_18_black"
-			Orientation = "UPPER_LEFT"
-		}}
-"""
-add(f"""
-	# Bloc panel (filled by TGCConvertPop.dll)
-	windowType = {{
-		name = "v2bloc_window"
-		backGround = "Background"
-		position = {{ x = -{W//2} y = -{BH//2} }}
-		size = {{ x = {W} y = {BH} }}
-		moveable = 1
-		dontRender = ""
-		horizontalBorder = ""
-		verticalBorder = ""
-		fullScreen = no
-		Orientation = "CENTER"
 
-		guiButtonType = {{
-			name = "Background"
-			quadTextureSprite = "GFX_v2bloc_bg"
-		}}
-		guiButtonType = {{
-			name = "close_button"
-			quadTextureSprite = "GFX_main_close_button"
-			position = {{ x = {W-44} y = 12 }}
-			Orientation = "UPPER_LEFT"
-			shortcut = "ESCAPE"
-		}}
-""")
-add(button("v2bloc_back", "GFX_button_standard_144", 22, 12, "Commands"))
-add(button("v2bloc_mapbtn", "GFX_button_standard_144", W - 200, 12, "Map on/off"))
-add(tbox("v2bloc_header", 0, 16, "vic_22", W, 30, "centre"))
-add(tbox("v2bloc_info1", 30, 52, "Arial12", W - 60, 18))
-add(tbox("v2bloc_info2", 30, 72, "vic_18", W - 60, 22))
-add(tbox("v2bloc_bar", 30, 96, "Arial12", W - 60, 18))
-add(tbox("v2bloc_eff1", 30, 118, "Arial12", W - 60, 18))
-add(tbox("v2bloc_eff2", 30, 136, "Arial12", W - 60, 18))
+# ---------------- bloc panel ----------------
+ROWS = 14
+COLS = [(45, 200), (250, 120), (375, 95), (475, 95), (575, 140)]
+y0 = 176
+BH = y0 + 22 + ROWS * 20 + 150
+add(window_head("v2bloc_window", W, BH, "GFX_v2bloc_bg", "v2bloc_header"))
+add(button("v2bloc_back", 35, 22, "Back", "Back to the Diplomacy+ overview.", sprite="GFX_button_standard_144"))
+add(tbox("v2bloc_info1", 45, 62, TXT, W - 90, 18))
+add(tbox("v2bloc_info2", 45, 82, HEAD, W - 90, 22))
+add(tbox("v2bloc_bar", 45, 106, TXT, W - 90, 18))
+add(tbox("v2bloc_eff1", 45, 128, TXT, W - 90, 18))
+add(tbox("v2bloc_eff2", 45, 146, TXT, W - 90, 18))
+add(deco("v2bloc_hbar", bar(W - 70), 35, y0))
 for r in range(ROWS + 1):
-    y = 162 if r == 0 else 184 + (r - 1) * 18
+    yy = y0 + 2 if r == 0 else y0 + 24 + (r - 1) * 20
+    if r:
+        add(deco(f"v2bloc_rbg{r}", rowbg(W - 70), 35, yy - 2))
     for c, (x, w) in enumerate(COLS):
-        add(tbox(f"v2bloc_r{r}c{c}", x, y, "vic_18" if r == 0 else "Arial12", w, 22 if r == 0 else 18))
-yb = 184 + ROWS * 18 + 10
-add(button("v2bloc_prev", "GFX_button_standard_144", 22, yb, "< Previous"))
-add(tbox("v2bloc_page", 0, yb + 8, "vic_18", W, 22, "centre"))
-add(button("v2bloc_next", "GFX_button_standard_144", W - 22 - 144, yb, "Next >"))
-add(tbox("v2bloc_mapstate", 30, yb + 44, "Arial12", W - 60, 18))
-add('''	}
+        add(tbox(f"v2bloc_r{r}c{c}", x, yy, HEAD if r == 0 else TXT, w, 20 if r == 0 else 18))
+yb = y0 + 24 + ROWS * 20 + 8
+add(button("v2bloc_prev", 35, yb, "< Previous", "Show the previous bloc."))
+add(tbox("v2bloc_page", 0, yb + 8, HEAD, W, 22, "centre"))
+add(button("v2bloc_next", W - 35 - 144, yb, "Next >", "Show the next bloc."))
+yb2 = yb + 40
+xs = [35, 35 + (W - 70 - 144) // 3, 35 + 2 * (W - 70 - 144) // 3, W - 35 - 144]
+add(button("v2bloc_create", xs[0], yb2, " ", "Found a bloc led by you, or leave the bloc you are in (the most prestigious member takes over)."))
+add(tbox("v2bloc_createtext", xs[0] + 4, yb2 + 8, TXT, 136, 18, "centre", "Create bloc"))
+add(button("v2bloc_identity", xs[1], yb2, " ", "Leader only: change the bloc identity (Military, Trade, Empire, Religious). Each has its own monthly effects."))
+add(tbox("v2bloc_idtext", xs[1] + 4, yb2 + 8, TXT, 136, 18, "centre", "Identity"))
+add(button("v2bloc_disband", xs[2], yb2, "Disband", "Leader only: dissolve your bloc. Every member leaves."))
+add(button("v2bloc_mapbtn", xs[3], yb2, " ", "Colour the political map by bloc (countries outside blocs turn grey)."))
+add(tbox("v2bloc_maptext", xs[3] + 4, yb2 + 8, TXT, 136, 18, "centre", "Bloc map"))
+add(tbox("v2bloc_mapstate", 45, yb2 + 44, TXT, W - 90, 18))
+add(tbox("v2bloc_hint", 45, yb2 + 64, TXT, W - 90, 18, "left",
+         "Tip: click a country on the map, then press the bloc button next to the province window."))
+add('\t}\n')
 
-	# "Invite <TAG> to bloc" button, shown by TGCConvertPop.dll to the right of the province window when you
-	# click a country on the map and you are in a bloc. Move it with position (from the lower left corner).
-	windowType = {
-		name = "v2bloc_diplo"
-		backGround = ""
-		position = { x = 386 y = -560 }
-		size = { x = 180 y = 36 }
-		moveable = 0
-		dontRender = ""
-		horizontalBorder = ""
-		verticalBorder = ""
-		fullScreen = no
-		Orientation = "LOWER_LEFT"
-
-		guiButtonType = {
-			name = "v2bloc_invite"
-			position = { x = 0 y = 0 }
-			quadTextureSprite = "GFX_button_standard_177"
-			buttonText = " "
-			buttonFont = "vic_18_black"
-			clicksound = click
-		}
-		instantTextBoxType = {
-			name = "v2bloc_invite_text"
-			position = { x = 4 y = 8 }
-			font = "vic_18_black"
-			borderSize = { x = 0 y = 0 }
-			text = "Invite to bloc"
-			maxWidth = 170
-			maxHeight = 20
-			format = centre
-			fixedsize = yes
-		}
-''')
-add('''	}
-
-	# "Treaty: ..." button, shown by TGCConvertPop.dll below the bloc invite button when a province is selected.
-	windowType = {
-		name = "v2treaty_add"
-		backGround = ""
-		position = { x = 386 y = -520 }
-		size = { x = 180 y = 36 }
-		moveable = 0
-		dontRender = ""
-		horizontalBorder = ""
-		verticalBorder = ""
-		fullScreen = no
-		Orientation = "LOWER_LEFT"
-
-		guiButtonType = {
-			name = "v2tr_addbtn"
-			position = { x = 0 y = 0 }
-			quadTextureSprite = "GFX_button_standard_177"
-			buttonText = " "
-			buttonFont = "vic_18_black"
-			clicksound = click
-		}
-		instantTextBoxType = {
-			name = "v2tr_addtext"
-			position = { x = 4 y = 8 }
-			font = "vic_18_black"
-			borderSize = { x = 0 y = 0 }
-			text = "Treaty"
-			maxWidth = 170
-			maxHeight = 20
-			format = centre
-			fixedsize = yes
-		}
-	}
-''')
-TL = 24
-TH = 60 + TL * 18 + 126
-add(f'''
-	# Treaty window (filled by TGCConvertPop.dll)
+# ---------------- buttons next to the province window ----------------
+def side_button(win, btn, txtbox, y, text, tip):
+    key = "V2CMD_TT_" + btn.upper(); tips[key] = tip
+    return f'''
 	windowType = {{
-		name = "v2treaty_window"
-		backGround = "Background"
-		position = {{ x = -{W//2} y = -{TH//2} }}
-		size = {{ x = {W} y = {TH} }}
-		moveable = 1
+		name = "{win}"
+		backGround = ""
+		position = {{ x = 386 y = {y} }}
+		size = {{ x = 180 y = 36 }}
+		moveable = 0
 		dontRender = ""
 		horizontalBorder = ""
 		verticalBorder = ""
 		fullScreen = no
-		Orientation = "CENTER"
+		Orientation = "LOWER_LEFT"
 
 		guiButtonType = {{
-			name = "Background"
-			quadTextureSprite = "GFX_v2treaty_bg"
+			name = "{btn}"
+			position = {{ x = 0 y = 0 }}
+			quadTextureSprite = "GFX_button_standard_177"
+			buttonText = " "
+			buttonFont = "vic_18_black"
+			clicksound = click
+			tooltip = "{key}"
+			tooltipText = "{key}"
 		}}
-		guiButtonType = {{
-			name = "close_button"
-			quadTextureSprite = "GFX_main_close_button"
-			position = {{ x = {W-44} y = 12 }}
-			Orientation = "UPPER_LEFT"
-			shortcut = "ESCAPE"
+		instantTextBoxType = {{
+			name = "{txtbox}"
+			position = {{ x = 4 y = 9 }}
+			font = "{TXT}"
+			borderSize = {{ x = 0 y = 0 }}
+			text = "{text}"
+			maxWidth = 170
+			maxHeight = 18
+			format = centre
+			fixedsize = yes
 		}}
-''')
-add(tbox("v2tr_header", 0, 16, "vic_22", W, 30, "centre"))
+	}}
+'''
+add("\t# Shown by TGCConvertPop.dll to the right of the province window. Move with position (from the lower left).")
+add(side_button("v2bloc_diplo", "v2bloc_invite", "v2bloc_invite_text", -560, "Invite to bloc",
+                "Invite this country into your bloc (the AI decides; with yesmen it accepts). Without a bloc, this founds one first."))
+add(side_button("v2treaty_add", "v2tr_addbtn", "v2tr_addtext", -520, "Treaty",
+                "Add this province to the treaty: yours are offered, theirs are asked for. Click again to remove it."))
+
+# ---------------- treaty window ----------------
+TL = 24
+ty0 = 66
+TH = ty0 + TL * 18 + 150
+add(window_head("v2treaty_window", W, TH, "GFX_v2treaty_bg", "v2tr_header"))
 for i in range(TL):
-    add(tbox(f"v2tr_l{i}", 30, 56 + i * 18, "Arial12", W - 60, 18))
-yb = 56 + TL * 18 + 8
-add(tbox("v2tr_status", 30, yb, "vic_18", W - 60, 22))
-# row 1: building the treaty
-add(button("v2tr_pick", "GFX_button_standard_144", 30, yb + 30, " "))
-add(tbox("v2tr_pick_text", 34, yb + 38, "Arial12", 136, 18, "centre"))
-add(button("v2tr_mine", "GFX_button_standard_144", 196, yb + 30, "+ My people"))
-add(button("v2tr_theirs", "GFX_button_standard_144", 362, yb + 30, "+ Their people"))
-add(button("v2tr_clear", "GFX_button_standard_144", W - 30 - 144, yb + 30, "Clear"))
-# row 2: proposing
-add(button("v2tr_prov", "GFX_button_standard_144", 30, yb + 66, "Propose exchange"))
-add(button("v2tr_popopt", "GFX_button_standard_144", 362, yb + 66, " "))
-add(tbox("v2tr_popopt_text", 366, yb + 74, "Arial12", 136, 18, "centre"))
-add(button("v2tr_pop", "GFX_button_standard_144", W - 30 - 144, yb + 66, "Population swap"))
+    add(tbox(f"v2tr_l{i}", 45, ty0 + i * 18, TXT, W - 90, 18))
+yb = ty0 + TL * 18 + 8
+add(deco("v2tr_sbar", bar(W - 70, 24), 35, yb - 2))
+add(tbox("v2tr_status", 45, yb, HEAD, W - 90, 22))
+xs = [35, 35 + (W - 70 - 144) // 3, 35 + 2 * (W - 70 - 144) // 3, W - 35 - 144]
+add(button("v2tr_pick", xs[0], yb + 32, " ", "While on, every province you click on the map is added to (or removed from) the treaty."))
+add(tbox("v2tr_pick_text", xs[0] + 4, yb + 40, TXT, 136, 18, "centre"))
+add(button("v2tr_mine", xs[1], yb + 32, "+ My people", "Ask for every province of theirs where your primary culture is the majority."))
+add(button("v2tr_theirs", xs[2], yb + 32, "+ Their people", "Offer every province of yours where their primary culture is the majority."))
+add(button("v2tr_clear", xs[3], yb + 32, "Clear", "Empty the treaty."))
+add(button("v2tr_prov", xs[0], yb + 72, "Propose", "Send the province exchange. A refusal costs 10 relations."))
+add(button("v2tr_popopt", xs[2], yb + 72, " ", "Which pops move in the population swap (click to cycle)."))
+add(tbox("v2tr_popopt_text", xs[2] + 4, yb + 80, TXT, 136, 18, "centre"))
+add(button("v2tr_pop", xs[3], yb + 72, "Population swap", "Each side receives its own people living in the other country. A refusal costs 5 relations."))
 add('\t}\n}\n')
+
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))
-open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r\n').write(f'''spriteTypes = {{
-	# background of v2cmd_window (TGCConvertPop)
-	corneredTileSpriteType = {{
-		name = "GFX_v2cmd_bg"
-		size = {{ x = {W} y = {H} }}
-		textureFile = "gfx\\\\interface\\\\tiles_dialog_type2.tga"
-		borderSize = {{ x = 94 y = 94 }}
+g = ['spriteTypes = {\n\t# TGCConvertPop windows (textures in gfx/interface/v2cmd_*.tga)\n']
+for n, (tex, w, h, b) in sprites.items():
+    g.append(f'''	corneredTileSpriteType = {{
+		name = "{n}"
+		size = {{ x = {w} y = {h} }}
+		textureFile = "gfx\\\\interface\\\\{tex}"
+		borderSize = {{ x = {b} y = {b} }}
 	}}
-	corneredTileSpriteType = {{
-		name = "GFX_v2treaty_bg"
-		size = {{ x = {W} y = {60 + 24 * 18 + 126} }}
-		textureFile = "gfx\\\\interface\\\\tiles_dialog_type2.tga"
-		borderSize = {{ x = 94 y = 94 }}
-	}}
-	corneredTileSpriteType = {{
-		name = "GFX_v2bloc_bg"
-		size = {{ x = {W} y = {BH} }}
-		textureFile = "gfx\\\\interface\\\\tiles_dialog_type2.tga"
-		borderSize = {{ x = 94 y = 94 }}
-	}}
-}}
 ''')
-print("window height", H)
+g.append('}\n')
+open(os.path.join(out, 'zz_v2commands.gfx'), 'w', encoding='cp1252', newline='\r\n').write(''.join(g))
+loc = ''.join(f'{k};{v.replace(";", ",")};;;;;;;;;;;;x\n' for k, v in tips.items())
+open(os.path.join(out, 'zz_v2commands.csv'), 'w', encoding='cp1252', newline='\r\n').write(loc)
+print("hub", H, "bloc", BH, "treaty", TH, "sprites", len(sprites), "tips", len(tips))
