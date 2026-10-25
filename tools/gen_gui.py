@@ -256,6 +256,8 @@ add('''	}
 			name = "v2bloc_invite"
 			position = { x = 0 y = 0 }
 			quadTextureSprite = "GFX_button_standard_177"
+			buttonText = " "
+			buttonFont = "vic_18_black"
 			clicksound = click
 		}
 		instantTextBoxType = {
@@ -289,6 +291,8 @@ add('''	}
 			name = "v2tr_addbtn"
 			position = { x = 0 y = 0 }
 			quadTextureSprite = "GFX_button_standard_177"
+			buttonText = " "
+			buttonFont = "vic_18_black"
 			clicksound = click
 		}
 		instantTextBoxType = {

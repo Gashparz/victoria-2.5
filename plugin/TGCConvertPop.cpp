@@ -2949,7 +2949,7 @@ void treaty_frame_sync(bool open, uintptr_t prov) {
         bool listed = in_list(g_tr_give, g_tr_ngive, id) || in_list(g_tr_take, g_tr_ntake, id);
         if (listed) snprintf(label, sizeof(label), "Treaty: remove #%u", id);
         else if (owner == me) snprintf(label, sizeof(label), "Treaty: offer #%u", id);
-        else snprintf(label, sizeof(label), "Treaty: ask %s for #%u", tag3(owner, t), id);
+        else snprintf(label, sizeof(label), "Treaty: ask %s #%u", tag3(owner, t), id);
         if (strcmp(label, last) != 0) {
             tb_set(g_traddwin, "v2tr_addtext", label);
             snprintf(last, sizeof(last), "%s", label);
