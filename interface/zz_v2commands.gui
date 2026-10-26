@@ -2202,12 +2202,33 @@ guiTypes = {
 			clicksound = click
 			tooltipText = "V2CMD_TT_V2TR_POP"
 		}
+		guiButtonType = {
+			name = "v2tr_safe"
+			quadTextureSprite = "GFX_button_standard_177"
+			position = { x = 35 y = 530 }
+			buttonText = " "
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "V2CMD_TT_V2TR_SAFE"
+		}
 		instantTextBoxType = {
-			name = "v2tr_ow0"
-			position = { x = 45 y = 530 }
+			name = "v2tr_safe_text"
+			position = { x = 39 y = 538 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
-			maxWidth = 670
+			maxWidth = 169
+			maxHeight = 18
+			text = "Safe transport"
+			format = centre
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_ow0"
+			position = { x = 230 y = 530 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 485
 			maxHeight = 18
 			text = " "
 			format = left
@@ -2215,10 +2236,10 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_ow1"
-			position = { x = 45 y = 548 }
+			position = { x = 230 y = 548 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
-			maxWidth = 670
+			maxWidth = 485
 			maxHeight = 18
 			text = " "
 			format = left

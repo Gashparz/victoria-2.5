@@ -313,8 +313,11 @@ for i in range(3):
     add(button(f"v2tr_opt{i}", ox[i], y + 50, " ", tipsopt[i]))
     add(tbox(f"v2tr_opt{i}_text", ox[i] + 4, y + 58, TXT, 136, 18, "centre"))
 add(button("v2tr_pop", W - 35 - 144, y + 50, "Swap", "Exchange the population only. Shared cultures stay. A refusal costs 5 relations."))
+add(button("v2tr_safe", 35, y + 90, " ", "Pay for ships, trains and relief so nobody dies on the way. Without it about 10% of the people who move die.",
+           sprite="GFX_button_standard_177"))
+add(tbox("v2tr_safe_text", 39, y + 98, TXT, 169, 18, "centre", "Safe transport"))
 for i in range(2):
-    add(tbox(f"v2tr_ow{i}", 45, y + 90 + i * 18, TXT, W - 90, 18))
+    add(tbox(f"v2tr_ow{i}", 230, y + 90 + i * 18, TXT, W - 275, 18))
 y += 90 + 2 * 18 + 8
 # both together
 add(tbox("v2tr_bothtext", 45, y + 8, HEAD, W - 260, 20))

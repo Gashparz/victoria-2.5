@@ -2734,6 +2734,7 @@ extern "C" void tcp_tr_opt0_thunk();
 extern "C" void tcp_tr_opt1_thunk();
 extern "C" void tcp_tr_opt2_thunk();
 extern "C" void tcp_tr_both_thunk();
+extern "C" void tcp_tr_safe_thunk();
 extern "C" void tcp_tr_pop_thunk();
 extern "C" void tcp_tr_clear_thunk();
 extern "C" void tcp_tr_open_thunk();
@@ -2746,7 +2747,7 @@ namespace {
 alignas(8) uint8_t g_tr_add_glue[kGlueSize], g_tr_close_glue[kGlueSize], g_tr_prov_glue[kGlueSize], g_tr_pop_glue[kGlueSize],
     g_tr_clear_glue[kGlueSize], g_tr_open_glue[kGlueSize], g_tr_pick_glue[kGlueSize], g_tr_mine_glue[kGlueSize],
     g_tr_theirs_glue[kGlueSize], g_tr_popopt_glue[kGlueSize], g_tr_opt0_glue[kGlueSize], g_tr_opt1_glue[kGlueSize],
-    g_tr_opt2_glue[kGlueSize], g_tr_both_glue[kGlueSize];
+    g_tr_opt2_glue[kGlueSize], g_tr_both_glue[kGlueSize], g_tr_safe_glue[kGlueSize];
 
 uint32_t ctag_lo(uint32_t idx) {
     uint32_t lo = 0;
@@ -2898,6 +2899,35 @@ void popopt_label(char* out, size_t n) {
     if (c) snprintf(out, n, "Only %s", culture_display(c));
     else snprintf(out, n, "%s", g_tr_popopt == 1 ? "Send theirs home" : g_tr_popopt == 2 ? "Bring yours home" : "Both ways");
 }
+// ---- migration losses and paid safe transport ----
+// Treasury: int64 at country+0xE78, 1.0 = 32768 (CTreasuryEffect::Execute 0x00896580 adds value*2^30/32768000).
+int g_migration_loss = 10;     // percent of the people who move that die on the way (ini: migration_loss)
+int g_transport_cost = 50;     // money per 1000 people for safe transport (ini: transport_cost)
+bool g_tr_safe = false;        // the player pays for safe transport in this treaty
+double money_of(uint32_t idx) {
+    uintptr_t c = country_at((int)idx);
+    return c ? (double)rd<int64_t>(c + 0xE78) / 32768.0 : 0;
+}
+void money_add(uint32_t idx, double v) {
+    uintptr_t c = country_at((int)idx);
+    if (c) *reinterpret_cast<int64_t*>(c + 0xE78) += (int64_t)(v * 32768.0);
+}
+double transport_cost(uint64_t people) { return (double)people / 1000.0 * g_transport_cost; }
+// Kills pct% of the pops of `culture` living in `owner`'s provinces (before they move); returns the dead.
+uint64_t migration_deaths(uint32_t owner, uintptr_t culture, int pct) {
+    if (pct <= 0) return 0;
+    static uintptr_t provs[2048];
+    static uintptr_t pops[8192];
+    int np = owned_provinces((int)owner, provs, 2048), n = 0;
+    for (int i = 0; i < np; ++i)
+        for_each_pop(provs[i], [&](uintptr_t pop, int) {
+            if (n < 8192 && pop_alive(pop) && rd<uintptr_t>(pop + 0x6C) == culture) pops[n++] = pop;
+        });
+    uint64_t before = 0, after = 0;
+    int capped = 0;
+    scale_pops(pops, n, (uint32_t)(100 - pct), &before, &after, &capped);
+    return before - after;
+}
 PopEval eval_population(uint32_t me, uint32_t ai) {
     PopEval r{};
     Eval& e = r.e;
@@ -2967,6 +2997,7 @@ PopEval eval_population(uint32_t me, uint32_t ai) {
     const char* bm = cached_bloc(me);
     const char* ba = cached_bloc(ai);
     if (bm && ba && _stricmp(bm, ba) == 0) { c += 10; e.add(10, "members of the same bloc"); }
+    if (g_tr_safe) { c += 10; e.add(10, "you pay for safe transport: nobody dies on the way"); }
     e.chance = clampi(c, 3, 95);
     return r;
 }
@@ -3064,12 +3095,18 @@ void treaty_propose_provinces() {
     bloc_map_redraw();
 }
 void treaty_propose_population_now(uint32_t me, uint32_t ai);
+bool pay_transport(uint32_t me, const PopEval& pe);
+extern uint64_t g_last_dead;
 void treaty_propose_population() {
     uint32_t me = player_index(), ai = g_tr_partner;
     char t[4];
     PopEval pe = eval_population(me, ai);
     if (!pe.e.possible) { snprintf(g_tr_status, sizeof(g_tr_status), "%s", pe.e.n ? pe.e.why[0] : "Not possible."); return; }
     if (!g_merge_fix_ok) { snprintf(g_tr_status, sizeof(g_tr_status), "Population exchange disabled (merge fix missing)."); return; }
+    if (g_tr_safe && money_of(me) < transport_cost(pe.they_get + pe.they_lose)) {
+        snprintf(g_tr_status, sizeof(g_tr_status), "Safe transport costs %.0f but your treasury has %.0f.", transport_cost(pe.they_get + pe.they_lose), money_of(me));
+        return;
+    }
     bool yes = roll(pe.e.chance);
     logf("treaty population with %s: chance %d%%, %s", tag3(ai, t), pe.e.chance, yes ? "accepted" : "refused");
     if (!yes) {
@@ -3077,26 +3114,48 @@ void treaty_propose_population() {
         snprintf(g_tr_status, sizeof(g_tr_status), "%s refused the population exchange (chance %d%%). Relations -5.", cn(ai), pe.e.chance);
         return;
     }
+    if (!pay_transport(me, pe)) return;
     treaty_propose_population_now(me, ai);
-    snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: about %llu people came to you, %llu went to them.", cn(ai),
+    char dd[24];
+    fmt_people(g_last_dead, dd, sizeof(dd));
+    if (g_tr_safe) snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: about %llu people came to you, %llu went to them. Safe transport paid: nobody died.", cn(ai),
              rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", (unsigned long long)pe.they_lose, (unsigned long long)pe.they_get);
+    else snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: the populations moved; %s people died on the way.", cn(ai),
+             rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", dd);
 }
+uint64_t g_last_dead = 0;
 void treaty_propose_population_now(uint32_t me, uint32_t ai) {
     uintptr_t only = popopt_culture();
     uintptr_t cm = country_at((int)me), ca = country_at((int)ai);
+    int loss = g_tr_safe ? 0 : g_migration_loss;
+    uint64_t dead = 0;
     if (only) {
-        if (national_culture(cm, only)) run_migrate_all(ai, me, culture_name(only));
-        else run_migrate_all(me, ai, culture_name(only));
+        uint32_t from = national_culture(cm, only) ? ai : me, to = from == ai ? me : ai;
+        dead += migration_deaths(from, only, loss);
+        run_migrate_all(from, to, culture_name(only));
     } else {
         // culture by culture, and only cultures that belong to one side (shared ones stay)
         popcult_refresh(me, ai);
         for (int k = 0; k < g_tr_npopcult; ++k) {
             uintptr_t c = g_tr_popcult[k];
-            if (g_tr_popopt != 1 && movable_to(cm, ca, c)) run_migrate_all(ai, me, culture_name(c));
-            if (g_tr_popopt != 2 && movable_to(ca, cm, c)) run_migrate_all(me, ai, culture_name(c));
+            if (g_tr_popopt != 1 && movable_to(cm, ca, c)) { dead += migration_deaths(ai, c, loss); run_migrate_all(ai, me, culture_name(c)); }
+            if (g_tr_popopt != 2 && movable_to(ca, cm, c)) { dead += migration_deaths(me, c, loss); run_migrate_all(me, ai, culture_name(c)); }
         }
         popcult_refresh(me, ai);
     }
+    g_last_dead = dead;
+    logf("population exchange %s <-> %s: %llu died on the way%s", cn(me), cn(ai), (unsigned long long)dead, g_tr_safe ? " (safe transport paid)" : "");
+}
+// Pays for safe transport when the player chose it. False = not enough money.
+bool pay_transport(uint32_t me, const PopEval& pe) {
+    if (!g_tr_safe) return true;
+    double cost = transport_cost(pe.they_get + pe.they_lose);
+    if (money_of(me) < cost) {
+        snprintf(g_tr_status, sizeof(g_tr_status), "Safe transport costs %.0f but your treasury has %.0f.", cost, money_of(me));
+        return false;
+    }
+    money_add(me, -cost);
+    return true;
 }
 
 // ---- the treaty panel ----
@@ -3171,8 +3230,17 @@ void treaty_panel_refresh() {
         char a2[24], b2[24];
         fmt_people(pe.they_lose, a2, sizeof(a2));
         fmt_people(pe.they_get, b2, sizeof(b2));
-        snprintf(buf, sizeof(buf), "You receive " C_GREEN "%s" C_END " of your people,  %s receives " C_GREEN "%s" C_END " of theirs.", a2, cn(ai), b2);
-    } else snprintf(buf, sizeof(buf), " ");
+        uint64_t moving = pe.they_get + pe.they_lose;
+        char dd[24];
+        fmt_people(moving * g_migration_loss / 100, dd, sizeof(dd));
+        if (g_tr_safe) snprintf(buf, sizeof(buf), "You receive " C_GREEN "%s" C_END ",  %s receives " C_GREEN "%s" C_END ".  Safe transport: nobody dies.", a2, cn(ai), b2);
+        else snprintf(buf, sizeof(buf), "You receive " C_GREEN "%s" C_END ",  %s receives " C_GREEN "%s" C_END ".  " C_RED "About %s would die on the way." C_END, a2, cn(ai), b2, dd);
+        char sb[80];
+        double cost = transport_cost(moving);
+        if (g_tr_safe) snprintf(sb, sizeof(sb), C_GREEN "Safe transport: %.0f" C_END, cost);
+        else snprintf(sb, sizeof(sb), "Pay %.0f: nobody dies", cost);
+        tb_set(g_treatywin, "v2tr_safe_text", sb);
+    } else { snprintf(buf, sizeof(buf), " "); tb_set(g_treatywin, "v2tr_safe_text", "Safe transport"); }
     tb_set(g_treatywin, "v2tr_popsum", buf);
     for (int i = 0; i < kTrPopWhy; ++i) {
         snprintf(nm, sizeof(nm), "v2tr_ow%d", i);
@@ -3215,6 +3283,7 @@ void treaty_open() {
         subscribe(g_treatywin, "v2tr_opt1", g_tr_opt1_glue, &tcp_tr_opt1_thunk);
         subscribe(g_treatywin, "v2tr_opt2", g_tr_opt2_glue, &tcp_tr_opt2_thunk);
         subscribe(g_treatywin, "v2tr_both", g_tr_both_glue, &tcp_tr_both_thunk);
+        subscribe(g_treatywin, "v2tr_safe", g_tr_safe_glue, &tcp_tr_safe_thunk);
         logf("treaty: window created");
     }
     treaty_panel_refresh();
@@ -3283,6 +3352,10 @@ void treaty_propose_both() {
     if (!e.possible) { snprintf(g_tr_status, sizeof(g_tr_status), "Provinces: %s", e.n ? e.why[0] : "not possible."); return; }
     if (!pe.e.possible) { snprintf(g_tr_status, sizeof(g_tr_status), "Population: %s", pe.e.n ? pe.e.why[0] : "not possible."); return; }
     if (!g_merge_fix_ok) { snprintf(g_tr_status, sizeof(g_tr_status), "Population exchange disabled (merge fix missing)."); return; }
+    if (g_tr_safe && money_of(me) < transport_cost(pe.they_get + pe.they_lose)) {
+        snprintf(g_tr_status, sizeof(g_tr_status), "Safe transport costs %.0f but your treasury has %.0f.", transport_cost(pe.they_get + pe.they_lose), money_of(me));
+        return;
+    }
     int chance = e.chance * pe.e.chance / 100;
     bool yes = roll(chance);
     logf("treaty both with %s: chance %d%%, %s", cn(ai), chance, yes ? "accepted" : "refused");
@@ -3295,6 +3368,10 @@ void treaty_propose_both() {
     for (int i = 0; i < g_tr_ntake; ++i) moved += transfer_province(g_tr_take[i], me);
     for (int i = 0; i < g_tr_ngive; ++i) moved += transfer_province(g_tr_give[i], ai);
     uint32_t keep_partner = ai;
+    if (!pay_transport(me, pe)) {  // provinces already moved; population stays where it is
+        relation_add(me, ai, 10);
+        return;
+    }
     treaty_propose_population_now(me, ai);
     relation_add(me, ai, 10);
     snprintf(g_tr_status, sizeof(g_tr_status), "%s signed%s: %d province(s) changed hands and the populations were exchanged.", cn(ai),
@@ -3304,6 +3381,7 @@ void treaty_propose_both() {
     g_bloc_cache_dirty = true;
     bloc_map_redraw();
 }
+extern "C" void __cdecl tcp_on_tr_safe() { g_tr_safe = !g_tr_safe; treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_both() { treaty_propose_both(); treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_popopt() {
     popcult_refresh(player_index(), g_tr_partner);
@@ -3324,6 +3402,7 @@ asm(".text\n"
     "    .globl _tcp_tr_opt0_thunk\n_tcp_tr_opt0_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_opt0\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_opt1_thunk\n_tcp_tr_opt1_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_opt1\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_opt2_thunk\n_tcp_tr_opt2_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_opt2\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_safe_thunk\n_tcp_tr_safe_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_safe\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_both_thunk\n_tcp_tr_both_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_both\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_popopt_thunk\n_tcp_tr_popopt_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_popopt\n    popfl\n    popal\n    ret\n");
 #undef TCP_THUNK
@@ -3629,6 +3708,8 @@ void read_settings() {
     g_ai_treaties = GetPrivateProfileIntW(L"convert_pop", L"ai_treaties", 1, g_host->config_file) != 0;
     g_dyn_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_ai_years", 10, g_host->config_file);
     g_req_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_request_years", 6, g_host->config_file);
+    g_migration_loss = GetPrivateProfileIntW(L"convert_pop", L"migration_loss", 10, g_host->config_file);
+    g_transport_cost = GetPrivateProfileIntW(L"convert_pop", L"transport_cost", 50, g_host->config_file);
     if (g_ai_treaties) { load_treaties(); install_secede_watch(); }
     const char* cmd = GetCommandLineA();
     char lower[4096];
@@ -3637,7 +3718,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-27f (diplomacy closes properly; treaty: direction buttons, propose both)");
+    logf("TGC Convert Pop build 2026-10-27g (population exchanges: losses on the way, paid safe transport)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

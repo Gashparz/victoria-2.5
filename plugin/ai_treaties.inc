@@ -358,11 +358,20 @@ int do_pop_swap(uint32_t a, uint32_t b) {
     uintptr_t ca = country_at((int)a), cb = country_at((int)b);
     popcult_refresh(a, b);
     int n = 0;
+    // the richer side pays for safe transport when it can easily afford it; otherwise people die on the way
+    PopEval pe = judge_population(a, b);
+    double cost = transport_cost(pe.they_get + pe.they_lose);
+    uint32_t payer = money_of(a) >= money_of(b) ? a : b;
+    int loss = g_migration_loss;
+    if (money_of(payer) >= 3 * cost) { money_add(payer, -cost); loss = 0; }
+    uint64_t dead = 0;
     for (int k = 0; k < g_tr_npopcult; ++k) {
         uintptr_t c = g_tr_popcult[k];
-        if (movable_to(ca, cb, c)) { run_migrate_all(b, a, culture_name(c)); ++n; }
-        if (movable_to(cb, ca, c)) { run_migrate_all(a, b, culture_name(c)); ++n; }
+        if (movable_to(ca, cb, c)) { dead += migration_deaths(b, c, loss); run_migrate_all(b, a, culture_name(c)); ++n; }
+        if (movable_to(cb, ca, c)) { dead += migration_deaths(a, c, loss); run_migrate_all(a, b, culture_name(c)); ++n; }
     }
+    g_last_dead = dead;
+    logf("population exchange %s <-> %s: %s, %llu died", cn(a), cn(b), loss ? "no transport aid" : "safe transport paid", (unsigned long long)dead);
     draft_pop();
     return n;
 }
@@ -445,7 +454,7 @@ void req_close(bool accepted) {
     uint32_t me = player_index(), ai = g_req.ai;
     char b[200];
     if (accepted) {
-        if (g_req.kind == 2) do_pop_swap(me, ai);
+        if (g_req.kind == 2) do_pop_swap(me, ai);  // the richer side pays for transport if it can
         else {
             transfer_list(g_req.player_gives, g_req.ng, ai);
             transfer_list(g_req.player_gets, g_req.nt, me);
@@ -787,7 +796,8 @@ extern "C" ConsoleResult* __cdecl cmd_treaty_history(ConsoleResult* out, ArgVect
                                                  : reply(out, false, "No country has a core and the majority in one of your provinces.");
     }
     Text t;
-    t.add("%d historical treaties (now %d-%02d) from %d file(s):\n", (int)g_hist.size(), gd.year, gd.month, (int)g_treaty_files.size());
+    t.add("%d historical treaties (now %d-%02d) from %d file(s). Your treasury as the plugin reads it: %.0f\n", (int)g_hist.size(), gd.year, gd.month,
+          (int)g_treaty_files.size(), money_of(player_index()));
     for (size_t i = 0; i < g_hist.size(); ++i) {
         const HistTreaty& h = g_hist[i];
         int to = -1, from = -1;

@@ -20,6 +20,7 @@ V2CMD_TT_V2TR_OPT0;Your people living with them come to you AND their people liv
 V2CMD_TT_V2TR_OPT1;Only your people living in their country come home to you.;;;;;;;;;;;;x
 V2CMD_TT_V2TR_OPT2;Only their people living in your country go home to them.;;;;;;;;;;;;x
 V2CMD_TT_V2TR_POP;Exchange the population only. Shared cultures stay. A refusal costs 5 relations.;;;;;;;;;;;;x
+V2CMD_TT_V2TR_SAFE;Pay for ships, trains and relief so nobody dies on the way. Without it about 10% of the people who move die.;;;;;;;;;;;;x
 V2CMD_TT_V2TR_BOTH;Provinces and population in one treaty: one answer for both.;;;;;;;;;;;;x
 V2CMD_TT_V2TOAST_BG;Treaty news. Click to dismiss, the last ones are listed in the BLOCS tab.;;;;;;;;;;;;x
 V2CMD_TT_V2REQ_ACCEPT;Sign the treaty. Relations +15.;;;;;;;;;;;;x
