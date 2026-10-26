@@ -109,10 +109,18 @@ TScore treaty_score(uint32_t me, uint32_t ai, double extra_money) {
         char n1[24], n2[24];
         fmt_people(pe.they_get, n1, sizeof(n1));
         fmt_people(pe.they_lose, n2, sizeof(n2));
+        char die1[48] = "", die2[48] = "";
+        if (!g_tr_safe && g_migration_loss > 0) {
+            char d1[24], d2[24];
+            fmt_people(pe.they_get * g_migration_loss / 100, d1, sizeof(d1));
+            fmt_people(pe.they_lose * g_migration_loss / 100, d2, sizeof(d2));
+            snprintf(die1, sizeof(die1), "  (" C_RED "%s die" C_END ")", d1);
+            snprintf(die2, sizeof(die2), "  (" C_RED "%s die" C_END ")", d2);
+        }
         if (g_tr_pop_theirs) {
             int v = (int)lround(10 * log2(1 + pe.they_get / 50000.0));
             Article& a = t.left[t.nl++];
-            snprintf(a.text, sizeof(a.text), "Send %s of their people home", n1);
+            snprintf(a.text, sizeof(a.text), "Send %s of their people home%s", n1, pe.they_get ? die1 : "");
             a.score = v; a.kind = 3;
             s += v;
             gives_something = true;
@@ -120,7 +128,7 @@ TScore treaty_score(uint32_t me, uint32_t ai, double extra_money) {
         if (g_tr_pop_mine) {
             int v = -(int)lround(6 * log2(1 + pe.they_lose / 50000.0));
             Article& a = t.right[t.nr++];
-            snprintf(a.text, sizeof(a.text), "Let %s of your people come home", n2);
+            snprintf(a.text, sizeof(a.text), "Let %s of your people come home%s", n2, pe.they_lose ? die2 : "");
             a.score = v; a.kind = 3;
             s += v;
             asks_something = true;

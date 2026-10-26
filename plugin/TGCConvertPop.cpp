@@ -391,7 +391,53 @@ _tcp_loc_thunk:
     popl  %ebp
     ret
 )");
+// Country display name: 0x004F97A0 (ECX = out std::string, EAX = country) builds the name the game shows
+// (government-specific names included). Province name: province vtable +0x1C (thiscall, out std::string*).
+extern "C" void tcp_cname_thunk(uintptr_t fn, uintptr_t country, void* out);
+asm(R"(
+    .text
+    .globl _tcp_cname_thunk
+_tcp_cname_thunk:
+    pushl %ebp
+    movl  %esp, %ebp
+    pushl %ebx
+    pushl %esi
+    pushl %edi
+    movl  12(%ebp), %eax
+    movl  16(%ebp), %ecx
+    call  *8(%ebp)
+    popl  %edi
+    popl  %esi
+    popl  %ebx
+    popl  %ebp
+    ret
+)");
 namespace {
+constexpr uintptr_t VA_COUNTRY_NAME = 0x004F97A0, VA_OPERATOR_DELETE = 0x00AAE91B;
+// copies a game std::string (MSVC: buffer/pointer +0, size +0x10, capacity +0x14) and frees it
+void take_string(uint8_t* str, char* buf, size_t n) {
+    uint32_t size = *(uint32_t*)(str + 0x10), cap = *(uint32_t*)(str + 0x14);
+    const char* p = cap >= 16 ? *(const char**)str : (const char*)str;
+    if (size > 0 && size < 400 && p) snprintf(buf, n, "%.*s", (int)size, p);
+    else if (n) buf[0] = 0;
+    if (cap >= 16 && *(void**)str) reinterpret_cast<void(__cdecl*)(void*)>(R(VA_OPERATOR_DELETE))(*(void**)str);
+}
+bool game_country_name(uintptr_t country, char* buf, size_t n) {
+    if (!country || IsBadReadPtr((void*)country, 0x40)) return false;
+    alignas(8) uint8_t out[32] = {0};
+    tcp_cname_thunk(R(VA_COUNTRY_NAME), country, out);
+    take_string(out, buf, n);
+    return buf[0] != 0;
+}
+bool game_province_name(uintptr_t prov, char* buf, size_t n) {
+    if (!prov || IsBadReadPtr((void*)prov, 0x60)) return false;
+    alignas(8) uint8_t out[32] = {0};
+    typedef void*(__fastcall * NameFn)(void*, void*, void*);
+    NameFn fn = (NameFn)(*reinterpret_cast<void***>(prov))[0x1C / 4];
+    fn((void*)prov, nullptr, out);
+    take_string(out, buf, n);
+    return buf[0] != 0;
+}
 // 0x9AD9D0 returns the c_str of the entry's key (a std::string at entry+0). For keys under 16 chars that
 // pointer IS the entry; the English text is the next std::string (entry+0x1C, MSVC layout: size +0x10, cap +0x14).
 const char* loc(const char* key) {
@@ -408,16 +454,23 @@ const char* loc(const char* key) {
     return txt && *txt ? txt : nullptr;
 }
 const char* culture_display(uintptr_t c) {
-    const char* k = culture_name(c);
-    const char* l = c ? loc(k) : nullptr;
-    return l ? l : k;
+    static char b[4][48];
+    static int k = 0;
+    char* r = b[k++ % 4];
+    const char* key = culture_name(c);
+    snprintf(r, 48, "%s", key);
+    bool up = true;
+    for (char* q = r; *q; ++q) {
+        if (*q == '_') { *q = ' '; up = true; continue; }
+        if (up) *q = (char)toupper((unsigned char)*q);
+        up = false;
+    }
+    return r;
 }
+uintptr_t get_province(uint32_t id);
 const char* prov_display(uint32_t id, char* buf, size_t n) {
-    char key[24];
-    snprintf(key, sizeof(key), "PROV%u", id);
-    const char* l = loc(key);
-    if (l) snprintf(buf, n, "%s", l);
-    else snprintf(buf, n, "#%u", id);
+    if (game_province_name(get_province(id), buf, n)) return buf;
+    snprintf(buf, n, "#%u", id);
     return buf;
 }
 const char* poptype_name(uintptr_t p) { return p ? gs_cstr(reinterpret_cast<const GameString*>(p + 0x08)) : "?"; }
@@ -868,12 +921,13 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVe
     // Collect.
     static uintptr_t picked[16384];
     static uint32_t psize[16384];
+    static int ptype[16384];
     int npicked = 0;
     bool overflow = false;
     for (int i = 0; i < nsrc; ++i)
         for_each_pop(src[i], [&](uintptr_t pop, int type) {
             if (!filter.match(pop, type)) return;
-            if (npicked < 16384) { picked[npicked] = pop; psize[npicked] = rd<uint32_t>(pop + 0x58); ++npicked; }
+            if (npicked < 16384) { picked[npicked] = pop; psize[npicked] = rd<uint32_t>(pop + 0x58); ptype[npicked] = type; ++npicked; }
             else overflow = true;
         });
     if (npicked == 0)
@@ -883,10 +937,12 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVe
     for (int i = 1; i < npicked; ++i) {
         uintptr_t p = picked[i];
         uint32_t sz = psize[i];
+        int ty = ptype[i];
         int j = i - 1;
-        while (j >= 0 && psize[j] < sz) { picked[j + 1] = picked[j]; psize[j + 1] = psize[j]; --j; }
+        while (j >= 0 && psize[j] < sz) { picked[j + 1] = picked[j]; psize[j + 1] = psize[j]; ptype[j + 1] = ptype[j]; --j; }
         picked[j + 1] = p;
         psize[j + 1] = sz;
+        ptype[j + 1] = ty;
     }
 
     static uint64_t received[4096];
@@ -894,12 +950,34 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVe
     int moved = 0;
     uint64_t people = 0;
     tcp_strict_merge = 1;
+    uint64_t lost_to_cap = 0;
     for (int i = 0; i < npicked; ++i) {
         uintptr_t pop = picked[i];
         if (!pop_alive(pop)) continue;
-        int best = 0;
-        for (int d = 1; d < ndest; ++d)
-            if (received[d] < received[best]) best = d;
+        // the arriving pop merges into a pop of the same type, culture and religion; the game caps a pop at
+        // 2,000,000 people, so pick the least-filled province where the merge stays under the cap
+        uintptr_t cul = rd<uintptr_t>(pop + 0x6C), rel = rd<uintptr_t>(pop + 0x70);
+        auto merge_size = [&](uintptr_t prov) {
+            uint32_t m = 0;
+            for_each_pop(prov, [&](uintptr_t q, int t) {
+                if (q != pop && pop_alive(q) && t == ptype[i] && rd<uintptr_t>(q + 0x6C) == cul && rd<uintptr_t>(q + 0x70) == rel)
+                    m = std::max(m, rd<uint32_t>(q + 0x58));
+            });
+            return m;
+        };
+        int best = -1;
+        for (int d = 0; d < ndest; ++d) {
+            if (best >= 0 && received[d] >= received[best]) continue;
+            if ((uint64_t)merge_size(dest[d]) + psize[i] <= 2000000) best = d;
+        }
+        if (best < 0) {  // every province is full for this pop: take the one with the most room
+            uint32_t room = 0;
+            for (int d = 0; d < ndest; ++d) {
+                uint32_t r = 2000000 - std::min<uint32_t>(2000000, merge_size(dest[d]));
+                if (best < 0 || r > room) { room = r; best = d; }
+            }
+            if (psize[i] > room) lost_to_cap += psize[i] - room;
+        }
         tcp_move_thunk(R(VA_POP_MOVE), (void*)dest[best], (void*)pop);
         received[best] += psize[i];
         people += psize[i];
@@ -909,8 +987,9 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVe
 
     uint64_t lo = received[0], hi = received[0];
     for (int i = 1; i < ndest; ++i) { if (received[i] < lo) lo = received[i]; if (received[i] > hi) hi = received[i]; }
-    logf("migrate_all_pops %s <- %s: %d %s pops, %llu people over %d provinces (min %llu, max %llu)", to_tag, from_tag, moved,
-         label, (unsigned long long)people, ndest, (unsigned long long)lo, (unsigned long long)hi);
+    logf("migrate_all_pops %s <- %s: %d %s pops, %llu people over %d provinces (min %llu, max %llu)%s", to_tag, from_tag, moved,
+         label, (unsigned long long)people, ndest, (unsigned long long)lo, (unsigned long long)hi,
+         lost_to_cap ? " - some pops hit the 2,000,000 cap" : "");
     return reply(out, true,
                  "Moved %d %s pops (%llu people) from %s (%d provinces) to %s (%d provinces): %llu to %llu people per province.%s",
                  moved, label, (unsigned long long)people, from_tag, nsrc, to_tag, ndest,
@@ -1213,6 +1292,7 @@ void for_each_tag(F fn) {
 const char* tag_text(uint32_t tag, char* buf) { memcpy(buf, &tag, 3); buf[3] = 0; return buf; }
 // "France" for FRA (the country's localised name), else the tag.
 const char* name_of(uint32_t idx, char* buf, size_t n) {
+    if (game_country_name(country_at((int)idx), buf, n)) return buf;
     uint32_t lo = 0;
     for_each_tag([&](uint32_t tag, uint32_t i) { if (i == idx) lo = tag; });
     char t[4];
@@ -1238,8 +1318,9 @@ const char* pn(uint32_t id) {
 const char* bloc_display(const char* name, char* buf, size_t n) {
     if (_strnicmp(name, "pact_", 5) == 0 && strlen(name) == 8) {
         char t[4] = {(char)toupper((unsigned char)name[5]), (char)toupper((unsigned char)name[6]), (char)toupper((unsigned char)name[7]), 0};
-        const char* l = loc(t);
-        snprintf(buf, n, "%s Pact", l ? l : t);
+        char nb[64];
+        int ci = country_index(t);
+        snprintf(buf, n, "%s Pact", ci > 0 && game_country_name(country_at(ci), nb, sizeof(nb)) ? nb : t);
         return buf;
     }
     snprintf(buf, n, "%s", name);
@@ -2887,8 +2968,13 @@ struct PopEval {
 };
 // A pop of culture c may be sent to `target` only if c is target's (primary or accepted) and NOT the
 // source's. Cultures both countries count as their own (e.g. German in Germany and in Austria-Hungary) stay.
+// A pop of culture c may be sent to `target`: the target's primary culture always comes home; the source's
+// primary culture never leaves; an accepted culture moves only if the source does not count it as its own.
 bool movable_to(uintptr_t target, uintptr_t source, uintptr_t c) {
-    return c && national_culture(target, c) && !national_culture(source, c);
+    if (!c || !target || !source || !national_culture(target, c)) return false;
+    if (rd<uintptr_t>(source + 0xE64) == c) return false;
+    if (rd<uintptr_t>(target + 0xE64) == c) return true;
+    return !national_culture(source, c);
 }
 // Candidate cultures for the "one culture" options: their nationals living with you, yours living with them.
 void popcult_refresh(uint32_t me, uint32_t ai) {
@@ -2970,7 +3056,7 @@ PopEval eval_population(uint32_t me, uint32_t ai) {
             my_total += sz;
             uintptr_t c = rd<uintptr_t>(pop + 0x6C);
             if (only ? c == only : movable_to(ca, cm, c)) r.they_get += sz;
-            else if (!only && national_culture(ca, c) && national_culture(cm, c)) r.shared += sz;
+            else if (!only && national_culture(ca, c) && national_culture(cm, c) && !movable_to(cm, ca, c)) r.shared += sz;
         });
     np = owned_provinces((int)ai, provs, 2048);
     for (int i = 0; i < np; ++i)
@@ -3742,7 +3828,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-28a (treaty window in the style of Victoria 3: articles, acceptance score, counter-offer, treaty map)");
+    logf("TGC Convert Pop build 2026-10-28b (game names; primary culture always comes home; exact migration under the pop cap)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
