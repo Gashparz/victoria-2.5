@@ -3292,8 +3292,15 @@ uint32_t dip_selected() {
     uintptr_t c = country_at((int)idx);
     return c && country_alive(c) ? idx : 0;
 }
+// Our windows live on a lower layer than the diplomacy screen, so close it before opening one of ours.
+void dip_hide() {
+    if (!dip_visible()) return;
+    win_show((void*)rd<uintptr_t>(g_dipobj + 0x4C), false);
+    if (g_dipbar) win_show(g_dipbar, false);
+}
 extern "C" void __cdecl tcp_on_dip_treaty() {
     uint32_t sel = g_dip_sel;
+    dip_hide();
     if (!sel || sel == player_index()) return;
     if (g_tr_partner != sel) {
         treaty_clear();
@@ -3306,6 +3313,7 @@ extern "C" void __cdecl tcp_on_dip_treaty() {
 extern "C" void __cdecl tcp_on_dip_bloc() {
     uint32_t sel = g_dip_sel, me = player_index();
     if (!sel || sel == me) return;
+    dip_hide();
     const char* theirs = cached_bloc(sel);
     const char* mine = cached_bloc(me);
     if (theirs) {  // show that bloc
@@ -3318,7 +3326,7 @@ extern "C" void __cdecl tcp_on_dip_bloc() {
     }
     tcp_on_diplo_invite();
 }
-extern "C" void __cdecl tcp_on_dip_blocs() { tcp_on_blocs_click(); }
+extern "C" void __cdecl tcp_on_dip_blocs() { dip_hide(); tcp_on_blocs_click(); }
 }  // namespace
 asm(".text\n"
     "    .globl _tcp_dip_treaty_thunk\n_tcp_dip_treaty_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_treaty\n    popfl\n    popal\n    ret\n"
@@ -3515,7 +3523,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-26b (mod-free diplomacy bar: selected country from the window itself)");
+    logf("TGC Convert Pop build 2026-10-26c (diplomacy bar closes the diplomacy screen before opening our windows)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
