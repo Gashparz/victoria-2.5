@@ -112,6 +112,10 @@ AI treaties
   When you are one of the parties, a window asks you: Accept or Decline (closing it = Decline; it expires
   after 30 days). Refusing costs relations and the country remembers it.
   News appear at the top of the screen and in the BLOCS tab under "Recent treaties".
+  The treaties are data files: mod\TGCConvertPop\treaties\base.txt (always loaded, works with any mod) plus
+  <mod>\treaties\*.txt of every ticked mod. "TGC Treaties" (mod\TGCTreaties) adds the treaties from TGC's own
+  events with TGC's tags, provinces and state regions; tick it only together with TGC. A file loaded later
+  replaces entries with the same id. The format is explained at the top of base.txt.
   Console: treaty_history  (status of every historical treaty)   treaty_history request  (an AI asks you now)
   ini: ai_treaties=0 turns it off; treaty_ai_years / treaty_request_years set how often.
 

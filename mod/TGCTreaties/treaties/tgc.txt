@@ -1,0 +1,49 @@
+# TGC-only historical treaties, taken from TGC's own events and converted to the plugin's treaty system:
+# TGC tags (ARC, LPL, GCO, OLD, XIN, PBC...), TGC-only provinces (3000+) and TGC state regions.
+# Entries with the same id as in mod/TGCConvertPop/treaties/base.txt replace the base version.
+# Same format as base.txt.
+
+treaty = { id = london_1839 years = { 1838 1840 } kind = cession from = { BEL } to = { NET }
+  provinces = { 381 397 3313 3411 } regions = { NET_375 NET_378 NET_379 NET_382 NET_385 } chance = 20
+  source = "TGC LondonTreaty 36711"
+  title = "Treaty of London" why = "Belgium is recognised; Limburg and Luxembourg's east go to the Netherlands." }
+treaty = { id = oregon years = { 1845 1847 } kind = swap from = { ENG CAN COL } to = { USA }
+  regions = { USA_78 } back_regions = { CAN_13 ENG_22 } chance = 15 source = "TGC USA_Expansion 44152"
+  title = "Oregon Treaty" why = "The Oregon Country is split along the 49th parallel." }
+treaty = { id = erzurum years = { 1846 1848 } kind = swap from = { PER } to = { TUR }
+  regions = { TUR_885 TUR_890 TUR_923 TUR_931 TUR_935 ABU_1162 }
+  back_regions = { RUS_1098 PER_1112 PER_1122 PER_1128 PER_1132 } chance = 15 source = "TGC PERFlavor 300988"
+  title = "Second Treaty of Erzurum" why = "The Ottomans and Persia settle their border along the lines of Zuhab." }
+treaty = { id = danish_gold_coast years = { 1849 1852 } kind = cession from = { DEN } to = { ENG }
+  provinces = { 1907 } regions = { FRA_1907 ASH_1909 } chance = 15 source = "TGC DANFlavor 36950"
+  title = "Sale of the Danish Gold Coast" why = "Denmark sells its forts on the Gold Coast to Britain." }
+treaty = { id = jade years = { 1853 1854 } kind = cession from = { OLD } to = { PRU GER NGF }
+  provinces = { 3259 } chance = 20 source = "TGC GERFlavor 40001"
+  title = "Jade Treaty" why = "Oldenburg sells the Jade bay to Prussia for a North Sea naval base." }
+treaty = { id = aigun years = { 1857 1862 } kind = cession from = { QNG CHI MCK } to = { RUS }
+  provinces = { 1081 1082 1083 1084 1085 } cores_of = { RUS } chance = 12 source = "TGC RUSFlavor 80110"
+  title = "Treaties of Aigun and Peking" why = "China cedes the lands north of the Amur and east of the Ussuri to Russia." }
+treaty = { id = chuguchak years = { 1863 1865 } kind = cession from = { XIN QNG CHI ALT } to = { RUS }
+  cores_of = { RUS } chance = 15 source = "TGC RUSFlavor 888888006"
+  title = "Treaty of Chuguchak" why = "China cedes the lands around Lake Balkhash and Issyk-Kul to Russia." }
+treaty = { id = dutch_gold_coast years = { 1870 1873 } kind = cession from = { NET } to = { ENG }
+  provinces = { 1909 } regions = { FRA_1907 } chance = 15 source = "TGC East Indies 952508"
+  title = "Anglo-Dutch Gold Coast Treaty" why = "The Netherlands cede their Gold Coast forts to Britain." }
+treaty = { id = st_barths years = { 1876 1878 } kind = cession from = { SWE } to = { FRA }
+  provinces = { 3246 } chance = 15 source = "TGC SWEFlavor 36623"
+  title = "Saint Barthelemy Referendum" why = "Sweden returns Saint Barthelemy to France after a referendum." }
+treaty = { id = argentina_chile years = { 1880 1882 } kind = swap from = { CHL } to = { ARG ARC LPL }
+  provinces = { 2391 2398 2400 } back = { 2333 2397 } chance = 15 source = "TGC ARGFlavor 97095"
+  title = "Boundary Treaty of 1881" why = "Chile renounces Patagonia; Argentina accepts Chilean control of the Strait of Magellan." }
+treaty = { id = heligoland years = { 1889 1892 } kind = swap from = { ENG } to = { GER PRU NGF }
+  provinces = { 533 } back_regions = { ENG_2024 ENG_2026 } back = { 1870 } chance = 15 source = "TGC GERFlavor 33006"
+  title = "Heligoland-Zanzibar Treaty" why = "Britain gives Heligoland to Germany; Germany gives up Witu and its East African claims." }
+treaty = { id = colombia_venezuela years = { 1890 1892 } kind = cession from = { CLM } to = { VNZ }
+  provinces = { 2270 2249 2278 } chance = 15 source = "TGC CLMFlavor 50033"
+  title = "Spanish Arbitral Award" why = "The Spanish crown arbitrates the Colombian-Venezuelan border." }
+treaty = { id = carolines years = { 1898 1901 } kind = cession from = { SPA } to = { GER PRU NGF }
+  provinces = { 2521 2518 2519 2579 610 } regions = { SPA_610 SPA_2517 } chance = 15 source = "TGC GERFlavor 33026"
+  title = "German-Spanish Treaty" why = "Spain sells the Caroline, Northern Mariana and Palau islands to Germany." }
+treaty = { id = petropolis years = { 1902 1904 } kind = cession from = { BOL PBC } to = { BRZ }
+  provinces = { 3295 } chance = 15 source = "TGC BRZFlavor 8220"
+  title = "Treaty of Petropolis" why = "Bolivia sells Acre to Brazil." }

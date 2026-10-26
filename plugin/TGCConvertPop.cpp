@@ -38,6 +38,8 @@
 #include <ctype.h>
 #include <math.h>
 #include <algorithm>
+#include <string>
+#include <vector>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -3534,6 +3536,7 @@ void read_settings() {
     g_ai_treaties = GetPrivateProfileIntW(L"convert_pop", L"ai_treaties", 1, g_host->config_file) != 0;
     g_dyn_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_ai_years", 10, g_host->config_file);
     g_req_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_request_years", 6, g_host->config_file);
+    if (g_ai_treaties) load_treaties();
     const char* cmd = GetCommandLineA();
     char lower[4096];
     size_t n = cmd ? strlen(cmd) : 0;
@@ -3541,7 +3544,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-27b (AI treaties: historical + plausible, requests to the player)");
+    logf("TGC Convert Pop build 2026-10-27c (treaties from data files: base + mods, e.g. TGC Treaties)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

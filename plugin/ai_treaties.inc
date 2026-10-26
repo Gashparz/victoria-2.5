@@ -7,69 +7,205 @@
 // State lives in country flags, so it is saved with the game: htreaty_<id> (done), trdyn_<year> (last dynamic
 // treaty), trreq_<year> (asked the player), trgrudge (the player refused).
 
+// Treaty data is read from text files: mod\TGCConvertPop\treaties\*.txt (always) and <mod path>\treaties\*.txt
+// of every mod on the command line (e.g. the "TGC Treaties" mod). Same id later = replaces the earlier entry.
 struct HistTreaty {
-    const char* id;
-    int y0, y1;            // year window (inclusive)
-    int kind;              // 0 cession FROM->TO, 1 swap (provs FROM->TO, back TO->FROM), 2 population exchange
-    const char* from[4];   // giver candidates (first that owns a listed province)
-    const char* to[3];     // receiver candidates (first alive)
-    uint16_t provs[16];
-    uint16_t back[8];
-    uint16_t to_owns[4];   // optional: TO must own one of these (0 = no condition)
-    int majority;          // 1: a province moves only if the receiver's nation is its majority (plebiscites)
-    int monthly;           // chance per month inside the window, percent
-    const char* title;
-    const char* why;
+    std::string id, title, why, source;
+    int y0 = 0, y1 = 0, kind = 0, majority = 0, monthly = 15;
+    std::vector<std::string> from, to, cores_of, back_cores_of;
+    std::vector<uint32_t> provs, back, to_owns;   // regions already expanded into ids
 };
-const HistTreaty kHist[] = {
-    {"aigun", 1857, 1862, 0, {"QNG", "CHI", "MCK"}, {"RUS"}, {1081, 1082, 1083, 1084, 1085}, {}, {}, 0, 12,
-     "Treaties of Aigun and Peking", "China cedes the lands north of the Amur and east of the Ussuri to Russia."},
-    {"danish_gold_coast", 1849, 1852, 0, {"DEN"}, {"ENG"}, {1907}, {}, {}, 0, 15,
-     "Sale of the Danish Gold Coast", "Denmark sells its forts on the Gold Coast to Britain."},
-    {"gadsden", 1852, 1856, 0, {"MEX"}, {"USA"}, {102, 2140}, {}, {103, 104, 101}, 0, 15,
-     "Gadsden Purchase", "Mexico sells the Mesilla valley and southern Arizona to the United States."},
-    {"turin", 1859, 1862, 0, {"SAR", "ITA"}, {"FRA"}, {472, 466}, {}, {}, 0, 15,
-     "Treaty of Turin", "Sardinia cedes Savoy and Nice to France for its help against Austria."},
-    {"ionian", 1863, 1866, 0, {"ION", "ENG"}, {"GRE"}, {826, 827}, {}, {}, 0, 15,
-     "Union of the Ionian Islands", "Britain hands the Ionian Islands to Greece."},
-    {"nicobar", 1867, 1870, 0, {"DEN"}, {"ENG"}, {3264}, {}, {}, 0, 12,
-     "Sale of the Nicobar Islands", "Denmark sells the Nicobar Islands to Britain."},
-    {"alaska", 1865, 1871, 0, {"RUS"}, {"USA"}, {1, 2, 3, 4, 5, 2599, 3317, 3390, 3391, 3395, 3408, 3409}, {}, {}, 0, 12,
-     "Alaska Purchase", "Russia sells Alaska to the United States for 7.2 million dollars."},
-    {"dutch_gold_coast", 1870, 1873, 0, {"NET"}, {"ENG"}, {1909}, {}, {}, 0, 15,
-     "Anglo-Dutch Gold Coast Treaty", "The Netherlands cede their Gold Coast forts to Britain."},
-    {"st_petersburg_1875", 1874, 1877, 1, {"JAP"}, {"RUS"}, {1086, 1087}, {1088, 1089}, {}, 0, 15,
-     "Treaty of Saint Petersburg", "Japan gives up Sakhalin to Russia and receives the Kuril Islands."},
-    {"cyprus", 1877, 1880, 0, {"TUR"}, {"ENG"}, {855, 856, 857}, {}, {}, 0, 15,
-     "Cyprus Convention", "The Ottoman Empire hands Cyprus to British administration."},
-    {"thessaly", 1880, 1883, 0, {"TUR"}, {"GRE"}, {831, 832, 825}, {}, {}, 0, 12,
-     "Convention of Constantinople", "The Ottomans cede Thessaly and Arta to Greece under great power pressure."},
-    {"heligoland", 1889, 1892, 0, {"ENG"}, {"GER", "PRU"}, {533}, {}, {}, 0, 15,
-     "Heligoland-Zanzibar Treaty", "Britain gives Heligoland to Germany in exchange for German claims in East Africa."},
-    {"kiautschou", 1897, 1900, 0, {"QNG", "CHI"}, {"GER", "PRU"}, {1566}, {}, {}, 0, 15,
-     "Kiautschou Lease", "China leases Kiautschou Bay (Tsingtao) to Germany."},
-    {"weihaiwei", 1897, 1900, 0, {"QNG", "CHI"}, {"ENG"}, {1569}, {}, {}, 0, 15,
-     "Weihaiwei Lease", "China leases Weihaiwei to Britain."},
-    {"port_arthur", 1897, 1900, 0, {"QNG", "CHI", "MCK"}, {"RUS"}, {1481}, {}, {}, 0, 15,
-     "Port Arthur Lease", "China leases Port Arthur to Russia."},
-    {"carolines", 1898, 1901, 0, {"SPA"}, {"GER", "PRU"}, {2521, 2518, 2519, 2579, 610}, {}, {}, 0, 15,
-     "German-Spanish Treaty", "Spain sells the Caroline, Northern Mariana and Palau islands to Germany."},
-    {"bul_tur_1913", 1913, 1915, 2, {"TUR"}, {"BUL"}, {}, {}, {}, 0, 15,
-     "Ottoman-Bulgarian Convention", "Bulgaria and the Ottoman Empire exchange their minorities along the border."},
-    {"danish_west_indies", 1916, 1918, 0, {"DEN"}, {"USA"}, {2223}, {}, {}, 0, 15,
-     "Sale of the Danish West Indies", "Denmark sells its Caribbean islands to the United States."},
-    {"schleswig", 1919, 1922, 0, {"GER", "PRU", "SWH"}, {"DEN"}, {371, 370}, {}, {}, 1, 20,
-     "Schleswig Plebiscites", "Northern Schleswig votes to join Denmark; the south stays German."},
-    {"gre_bul_1919", 1919, 1921, 2, {"BUL"}, {"GRE"}, {}, {}, {}, 0, 15,
-     "Convention of Neuilly", "Greece and Bulgaria agree on a reciprocal emigration of their minorities."},
-    {"lausanne", 1922, 1925, 2, {"TUR"}, {"GRE"}, {}, {}, {}, 0, 20,
-     "Lausanne Population Exchange", "Greece and Turkey exchange their Orthodox and Muslim populations."},
-    {"jubaland", 1924, 1926, 0, {"ENG"}, {"ITA"}, {1870}, {}, {}, 0, 15,
-     "Cession of Jubaland", "Britain cedes Jubaland to Italian Somaliland."},
-    {"saar", 1934, 1936, 0, {"FRA"}, {"GER"}, {573}, {}, {}, 1, 25,
-     "Saar Plebiscite", "The Saar votes to return to Germany."},
-};
-constexpr int kNumHist = sizeof(kHist) / sizeof(kHist[0]);
+std::vector<HistTreaty> g_hist;
+std::vector<std::string> g_treaty_files;
+// state regions of the active map: name -> province ids
+std::vector<std::pair<std::string, std::vector<uint32_t>>> g_regions;
+
+struct Tok { std::vector<std::string> t; size_t i = 0; bool eof() const { return i >= t.size(); } const std::string& next() { static std::string e; return i < t.size() ? t[i++] : e; } const std::string& peek() { static std::string e; return i < t.size() ? t[i] : e; } };
+bool read_file(const char* path, std::string& out) {
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    char buf[8192];
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) out.append(buf, n);
+    fclose(f);
+    return true;
+}
+void tokenize(const std::string& s, Tok& tk) {
+    size_t i = 0, n = s.size();
+    while (i < n) {
+        char c = s[i];
+        if (c == '#') { while (i < n && s[i] != '\n') ++i; continue; }
+        if (isspace((unsigned char)c)) { ++i; continue; }
+        if (c == '{' || c == '}' || c == '=') { tk.t.push_back(std::string(1, c)); ++i; continue; }
+        if (c == '"') {
+            size_t j = s.find('"', i + 1);
+            if (j == std::string::npos) j = n;
+            tk.t.push_back(s.substr(i + 1, j - i - 1));
+            i = j + 1;
+            continue;
+        }
+        size_t j = i;
+        while (j < n && !isspace((unsigned char)s[j]) && s[j] != '{' && s[j] != '}' && s[j] != '=' && s[j] != '#') ++j;
+        tk.t.push_back(s.substr(i, j - i));
+        i = j;
+    }
+}
+std::vector<std::string> read_list(Tok& tk) {  // after "=": either { a b c } or a single word
+    std::vector<std::string> v;
+    if (tk.peek() != "{") { v.push_back(tk.next()); return v; }
+    tk.next();
+    while (!tk.eof() && tk.peek() != "}") v.push_back(tk.next());
+    tk.next();
+    return v;
+}
+void skip_value(Tok& tk) {
+    if (tk.peek() != "{") { tk.next(); return; }
+    int d = 0;
+    do { const std::string& x = tk.next(); if (x == "{") ++d; else if (x == "}") --d; } while (d > 0 && !tk.eof());
+}
+void load_regions(const char* path) {
+    std::string s;
+    if (!read_file(path, s)) return;
+    g_regions.clear();
+    Tok tk;
+    tokenize(s, tk);
+    while (!tk.eof()) {
+        std::string name = tk.next();
+        if (tk.peek() != "=") continue;
+        tk.next();
+        if (tk.peek() != "{") { tk.next(); continue; }
+        std::vector<uint32_t> ids;
+        for (auto& x : read_list(tk)) if (isdigit((unsigned char)x[0])) ids.push_back((uint32_t)atoi(x.c_str()));
+        g_regions.push_back({name, ids});
+    }
+    logf("treaties: %d state regions from %s", (int)g_regions.size(), path);
+}
+void add_ids(std::vector<uint32_t>& to, const std::vector<std::string>& l, bool regions, int* missing) {
+    for (auto& x : l) {
+        if (!regions) { if (isdigit((unsigned char)x[0])) to.push_back((uint32_t)atoi(x.c_str())); continue; }
+        bool found = false;
+        for (auto& r : g_regions)
+            if (_stricmp(r.first.c_str(), x.c_str()) == 0) { to.insert(to.end(), r.second.begin(), r.second.end()); found = true; break; }
+        if (!found && missing) ++*missing;
+    }
+}
+int load_treaty_file(const char* path) {
+    std::string s;
+    if (!read_file(path, s)) return -1;
+    Tok tk;
+    tokenize(s, tk);
+    int n = 0, missing = 0;
+    while (!tk.eof()) {
+        std::string key = tk.next();
+        if (tk.peek() != "=") continue;
+        tk.next();
+        if (key != "treaty") { skip_value(tk); continue; }
+        if (tk.next() != "{") continue;
+        HistTreaty h;
+        while (!tk.eof() && tk.peek() != "}") {
+            std::string k = tk.next();
+            if (tk.peek() != "=") continue;
+            tk.next();
+            std::vector<std::string> v = read_list(tk);
+            std::string one = v.empty() ? "" : v[0];
+            if (k == "id") h.id = one;
+            else if (k == "title") h.title = one;
+            else if (k == "why") h.why = one;
+            else if (k == "source") h.source = one;
+            else if (k == "years" && v.size() >= 2) { h.y0 = atoi(v[0].c_str()); h.y1 = atoi(v[1].c_str()); }
+            else if (k == "kind") h.kind = one == "swap" ? 1 : one == "population" ? 2 : 0;
+            else if (k == "from") h.from = v;
+            else if (k == "to") h.to = v;
+            else if (k == "provinces") add_ids(h.provs, v, false, nullptr);
+            else if (k == "regions") add_ids(h.provs, v, true, &missing);
+            else if (k == "cores_of") h.cores_of = v;
+            else if (k == "back") add_ids(h.back, v, false, nullptr);
+            else if (k == "back_regions") add_ids(h.back, v, true, &missing);
+            else if (k == "back_cores_of") h.back_cores_of = v;
+            else if (k == "to_owns") add_ids(h.to_owns, v, false, nullptr);
+            else if (k == "majority") h.majority = one == "yes" || one == "1";
+            else if (k == "chance") h.monthly = atoi(one.c_str());
+        }
+        tk.next();
+        if (h.id.empty() || h.from.empty() || h.to.empty() || !h.y0) continue;
+        if (h.title.empty()) h.title = h.id;
+        bool replaced = false;
+        for (auto& o : g_hist) if (o.id == h.id) { o = h; replaced = true; }
+        if (!replaced) g_hist.push_back(h);
+        ++n;
+    }
+    logf("treaties: %d from %s%s", n, path, missing ? " (some regions not on this map: skipped)" : "");
+    g_treaty_files.push_back(path);
+    return n;
+}
+void load_dir(const std::string& dir) {
+    WIN32_FIND_DATAA fd;
+    HANDLE h = FindFirstFileA((dir + "\\*.txt").c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return;
+    std::vector<std::string> names;
+    do names.push_back(fd.cFileName); while (FindNextFileA(h, &fd));
+    FindClose(h);
+    std::sort(names.begin(), names.end());
+    for (auto& n : names) load_treaty_file((dir + "\\" + n).c_str());
+}
+// mod paths from the command line, in order: -mod=mod/TGC.mod -> "mod/TGC"
+std::vector<std::string> mod_paths() {
+    std::vector<std::string> out;
+    const char* cl = GetCommandLineA();
+    for (const char* p = strstr(cl, "-mod="); p; p = strstr(p + 5, "-mod=")) {
+        const char* e = strstr(p + 5, ".mod");
+        if (!e) break;
+        std::string file(p + 5, e + 4);
+        std::string s;
+        if (!read_file(file.c_str(), s)) continue;
+        Tok tk;
+        tokenize(s, tk);
+        while (!tk.eof()) {
+            std::string k = tk.next();
+            if (k == "path" && tk.peek() == "=") { tk.next(); out.push_back(tk.next()); break; }
+        }
+    }
+    return out;
+}
+void load_treaties() {
+    g_hist.clear();
+    g_treaty_files.clear();
+    std::vector<std::string> mods = mod_paths();
+    std::string region = "map\\region.txt";
+    for (auto& m : mods) {
+        std::string r = m + "\\map\\region.txt";
+        if (GetFileAttributesA(r.c_str()) != INVALID_FILE_ATTRIBUTES) region = r;
+    }
+    load_regions(region.c_str());
+    load_dir("mod\\TGCConvertPop\\treaties");
+    for (auto& m : mods) if (_stricmp(m.c_str(), "mod/TGCConvertPop") != 0) load_dir(m + "\\treaties");
+    logf("treaties: %d historical treaties loaded", (int)g_hist.size());
+}
+// provinces a country owns among `ids` plus those that are cores of `cores`
+void pick_provinces(uint32_t owner, const std::vector<uint32_t>& ids, const std::vector<std::string>& cores, bool majority,
+                    uint32_t nation, uint32_t* out, int& n, int max) {
+    uintptr_t oc = country_at((int)owner);
+    int cap = rd<int32_t>(oc + 0xBE4);
+    auto take = [&](uintptr_t p, uint32_t id) {
+        if (n >= max || (int)id == cap) return;
+        for (int i = 0; i < n; ++i) if (out[i] == id) return;
+        if (majority && national_share(p, nation) < 0.5) return;
+        out[n++] = id;
+    };
+    for (uint32_t id : ids) {
+        uintptr_t p = get_province(id);
+        if (p && rd<uint32_t>(p + 0x12C) == owner) take(p, id);
+    }
+    if (!cores.empty()) {
+        std::vector<int> idx;
+        for (auto& t : cores) { int i = country_index(t.c_str()); if (i > 0) idx.push_back(i); }
+        static uintptr_t provs[2048];
+        int np = owned_provinces((int)owner, provs, 2048);
+        for (int i = 0; i < np; ++i)
+            for (int c : idx)
+                if (province_has_core(provs[i], (uint32_t)c)) { take(provs[i], rd<uint32_t>(provs[i] + 0x58)); break; }
+    }
+}
 
 struct GameDate { int year, month, day; };
 GameDate game_date() {
@@ -303,12 +439,12 @@ extern "C" void __cdecl tcp_on_req_dec() { req_close(false); }
 // ---- historical treaties ----
 bool hist_done(const HistTreaty& h, uint32_t a, uint32_t b) {
     char f[48];
-    snprintf(f, sizeof(f), "htreaty_%s", h.id);
+    snprintf(f, sizeof(f), "htreaty_%s", h.id.c_str());
     return has_flag(country_at((int)a), f) || has_flag(country_at((int)b), f);
 }
 void hist_mark(const HistTreaty& h, uint32_t a, uint32_t b) {
     char f[48];
-    snprintf(f, sizeof(f), "htreaty_%s", h.id);
+    snprintf(f, sizeof(f), "htreaty_%s", h.id.c_str());
     flag_set(country_at((int)a), f, true);
     flag_set(country_at((int)b), f, true);
 }
@@ -316,41 +452,29 @@ void hist_mark(const HistTreaty& h, uint32_t a, uint32_t b) {
 int hist_try(const HistTreaty& h, int year) {
     if (year < h.y0 || year > h.y1) return 0;
     int to = -1;
-    for (const char* t : h.to) if (t && to < 0) to = alive_index(t);
+    for (auto& t : h.to) if (to < 0) to = alive_index(t.c_str());
     if (to < 0) return 0;
     int from = -1;
-    uint32_t give[16], back[8];
+    uint32_t give[64], back[64];
     int ng = 0, nb = 0;
-    for (const char* t : h.from) {
-        if (!t || from >= 0) continue;
-        int f = alive_index(t);
+    for (auto& t : h.from) {
+        if (from >= 0) break;
+        int f = alive_index(t.c_str());
         if (f < 0 || f == to) continue;
         if (h.kind == 2) { from = f; break; }
-        uintptr_t fc = country_at(f);
-        int cap = rd<int32_t>(fc + 0xBE4);
-        for (uint16_t id : h.provs) {
-            if (!id) break;
-            uintptr_t p = get_province(id);
-            if (!p || rd<uint32_t>(p + 0x12C) != (uint32_t)f || (int)id == cap) continue;
-            if (h.majority && national_share(p, (uint32_t)to) < 0.5) continue;
-            give[ng++] = id;
-        }
+        ng = 0;
+        pick_provinces((uint32_t)f, h.provs, h.cores_of, h.majority, (uint32_t)to, give, ng, 64);
         if (ng) from = f;
     }
     if (from < 0) return 0;
     if (hist_done(h, (uint32_t)from, (uint32_t)to)) return 0;
     if (at_war_with((uint32_t)from, (uint32_t)to)) return 0;
-    if (h.to_owns[0]) {
+    if (!h.to_owns.empty()) {
         bool ok = false;
-        for (uint16_t id : h.to_owns) if (id) { uintptr_t p = get_province(id); ok |= p && rd<uint32_t>(p + 0x12C) == (uint32_t)to; }
+        for (uint32_t id : h.to_owns) { uintptr_t p = get_province(id); ok |= p && rd<uint32_t>(p + 0x12C) == (uint32_t)to; }
         if (!ok) return 0;
     }
-    if (h.kind == 1)
-        for (uint16_t id : h.back) {
-            if (!id) break;
-            uintptr_t p = get_province(id);
-            if (p && rd<uint32_t>(p + 0x12C) == (uint32_t)to) back[nb++] = id;
-        }
+    if (h.kind == 1) pick_provinces((uint32_t)to, h.back, h.back_cores_of, false, (uint32_t)from, back, nb, 64);
     if (relation((uint32_t)from, (uint32_t)to) < -150) return 0;  // bitter enemies do not sign
     if ((int)(rnd() % 100) >= h.monthly) return 0;
     uint32_t me = player_index();
@@ -363,25 +487,30 @@ int hist_try(const HistTreaty& h, int year) {
         Request r{};
         r.ai = (uint32_t)from == me ? (uint32_t)to : (uint32_t)from;
         r.kind = h.kind == 2 ? 2 : 0;
+        ng = std::min(ng, 16); nb = std::min(nb, 16);
         if ((uint32_t)from == me) { memcpy(r.player_gives, give, ng * 4); r.ng = ng; memcpy(r.player_gets, back, nb * 4); r.nt = nb; }
         else { memcpy(r.player_gets, give, ng * 4); r.nt = ng; memcpy(r.player_gives, back, nb * 4); r.ng = nb; }
-        snprintf(r.title, sizeof(r.title), "%s", h.title);
-        snprintf(r.why, sizeof(r.why), "History: %s", h.why);
+        snprintf(r.title, sizeof(r.title), "%s", h.title.c_str());
+        snprintf(r.why, sizeof(r.why), "History: %s", h.why.c_str());
         r.penalty = (uint32_t)from == me && h.kind != 2 ? 20 : 0;
-        r.hist = h.id;
+        r.hist = h.id.c_str();
         req_open(r);
         return 1;
     }
     char b[220];
     if (h.kind == 2) {
         do_pop_swap((uint32_t)to, (uint32_t)from);
-        snprintf(b, sizeof(b), "%s: %s and %s exchange their minorities.", h.title, cn((uint32_t)from), cn((uint32_t)to));
+        snprintf(b, sizeof(b), "%s: %s and %s exchange their minorities.", h.title.c_str(), cn((uint32_t)from), cn((uint32_t)to));
     } else {
         transfer_list(give, ng, (uint32_t)to);
         if (nb) transfer_list(back, nb, (uint32_t)from);
         char names[160];
         list_names(give, ng, names, sizeof(names));
-        snprintf(b, sizeof(b), "%s: %s cedes %s to %s.", h.title, cn((uint32_t)from), names, cn((uint32_t)to));
+        if (nb) {
+            char back_names[160];
+            list_names(back, nb, back_names, sizeof(back_names));
+            snprintf(b, sizeof(b), "%s: %s cedes %s to %s and receives %s.", h.title.c_str(), cn((uint32_t)from), names, cn((uint32_t)to), back_names);
+        } else snprintf(b, sizeof(b), "%s: %s cedes %s to %s.", h.title.c_str(), cn((uint32_t)from), names, cn((uint32_t)to));
     }
     relation_add((uint32_t)from, (uint32_t)to, 10);
     hist_mark(h, (uint32_t)from, (uint32_t)to);
@@ -534,7 +663,7 @@ void ai_treaties_monthly() {
     static bool logged = false;
     if (!logged) { logf("ai treaties: game date %d-%02d-%02d (raw %u)", g.year, g.month, g.day, world_date()); logged = true; }
     int fired = 0;
-    for (int i = 0; i < kNumHist && fired < 2; ++i) fired += hist_try(kHist[i], g.year);
+    for (size_t i = 0; i < g_hist.size() && fired < 2; ++i) fired += hist_try(g_hist[i], g.year);
     // dynamic deals: about one every g_dyn_years years worldwide, at most one per month
     if (!fired && (int)(rnd() % (uint32_t)(12 * std::max(g_dyn_years, 1))) == 0) dynamic_try(g.year);
     // the player is asked separately, rarely
@@ -562,19 +691,19 @@ extern "C" ConsoleResult* __cdecl cmd_treaty_history(ConsoleResult* out, ArgVect
                                                  : reply(out, false, "No country has a core and the majority in one of your provinces.");
     }
     Text t;
-    t.add("Historical treaties (now %d-%02d):\n", gd.year, gd.month);
-    for (int i = 0; i < kNumHist; ++i) {
-        const HistTreaty& h = kHist[i];
+    t.add("%d historical treaties (now %d-%02d) from %d file(s):\n", (int)g_hist.size(), gd.year, gd.month, (int)g_treaty_files.size());
+    for (size_t i = 0; i < g_hist.size(); ++i) {
+        const HistTreaty& h = g_hist[i];
         int to = -1, from = -1;
-        for (const char* x : h.to) if (x && to < 0) to = alive_index(x);
-        for (const char* x : h.from) if (x && from < 0) from = alive_index(x);
+        for (auto& x : h.to) if (to < 0) to = alive_index(x.c_str());
+        for (auto& x : h.from) if (from < 0) from = alive_index(x.c_str());
         const char* st;
         if (to >= 0 && from >= 0 && hist_done(h, (uint32_t)from, (uint32_t)to)) st = "done";
         else if (gd.year > h.y1) st = "missed";
         else if (gd.year < h.y0) st = "future";
         else if (to < 0 || from < 0) st = "countries missing";
         else st = "possible now";
-        t.add("%d-%d %s: %s\n", h.y0, h.y1, h.title, st);
+        t.add("%d-%d %s: %s\n", h.y0, h.y1, h.title.c_str(), st);
     }
     return finish(out, true, t);
 }

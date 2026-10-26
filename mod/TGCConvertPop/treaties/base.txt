@@ -1,0 +1,118 @@
+# Historical treaties for the Console Commands plugin (TGCConvertPop.dll). Works with any mod or none.
+# A treaty fires inside its years when the world allows it: a "from" country owns at least one of the
+# listed provinces, a "to" country exists, they are not at war. Provinces the giver no longer owns are skipped.
+#
+#   id        unique name (a later file with the same id replaces this entry, e.g. a mod's own version)
+#   years     { first last }
+#   kind      cession | swap | population
+#   from, to  candidate tags, first one that qualifies is used
+#   provinces / regions / cores_of   what FROM gives (regions come from the active map's region.txt;
+#             cores_of = FROM's provinces that are cores of these tags)
+#   back / back_regions / back_cores_of   what TO gives in return (swap)
+#   to_owns   TO must own one of these provinces
+#   majority  yes = a province moves only if TO's nation is its majority (plebiscites)
+#   chance    percent per month inside the window
+#   source    where the treaty comes from (vanilla event, TGC event, history)
+
+treaty = { id = webster_ashburton years = { 1841 1843 } kind = cession from = { ENG CAN } to = { USA }
+  provinces = { 250 158 } chance = 15 source = "TGC USA_Expansion 44122"
+  title = "Webster-Ashburton Treaty" why = "Britain and the United States settle the Maine and Great Lakes border." }
+treaty = { id = danish_india years = { 1844 1846 } kind = cession from = { DEN } to = { ENG EIC }
+  cores_of = { HND } chance = 15 source = "TGC DANFlavor 36224"
+  title = "Sale of Danish India" why = "Denmark sells Tranquebar and Serampore to Britain." }
+treaty = { id = danish_gold_coast years = { 1849 1852 } kind = cession from = { DEN } to = { ENG }
+  provinces = { 1907 } chance = 15 source = "history; TGC DANFlavor 36950"
+  title = "Sale of the Danish Gold Coast" why = "Denmark sells its forts on the Gold Coast to Britain." }
+treaty = { id = gadsden years = { 1852 1856 } kind = cession from = { MEX } to = { USA }
+  provinces = { 102 2140 } to_owns = { 103 104 101 } chance = 15 source = "history"
+  title = "Gadsden Purchase" why = "Mexico sells the Mesilla valley and southern Arizona to the United States." }
+treaty = { id = aigun years = { 1857 1862 } kind = cession from = { QNG CHI MCK } to = { RUS }
+  provinces = { 1081 1082 1083 1084 1085 } chance = 12 source = "vanilla RUSFlavor 80000"
+  title = "Treaties of Aigun and Peking" why = "China cedes the lands north of the Amur and east of the Ussuri to Russia." }
+treaty = { id = flores years = { 1858 1860 } kind = cession from = { POR } to = { NET }
+  provinces = { 1439 1444 } chance = 15 source = "TGC East Indies 97125"
+  title = "Flores Purchase" why = "Portugal sells eastern Flores and the Solor islands to the Netherlands." }
+treaty = { id = belize years = { 1858 1860 } kind = cession from = { GUA UCA } to = { ENG BLZ }
+  provinces = { 2190 } chance = 15 source = "TGC ENGFlavor 1904191419"
+  title = "Wyke-Aycinena Treaty" why = "Guatemala recognises British Honduras." }
+treaty = { id = mosquito_coast years = { 1859 1861 } kind = cession from = { ENG } to = { HON NIC UCA }
+  provinces = { 2196 } chance = 15 source = "TGC ENGFlavor 209706"
+  title = "Wyke-Cruz Treaty" why = "Britain gives the Bay Islands and the Mosquito Coast to Honduras." }
+treaty = { id = turin years = { 1859 1862 } kind = cession from = { SAR ITA } to = { FRA }
+  provinces = { 472 466 } chance = 15 source = "history"
+  title = "Treaty of Turin" why = "Sardinia cedes Savoy and Nice to France for its help against Austria." }
+treaty = { id = ionian years = { 1863 1866 } kind = cession from = { ION ENG } to = { GRE }
+  provinces = { 826 827 } chance = 15 source = "history"
+  title = "Union of the Ionian Islands" why = "Britain hands the Ionian Islands to Greece." }
+treaty = { id = alaska years = { 1865 1871 } kind = cession from = { RUS } to = { USA }
+  provinces = { 1 2 3 4 5 2599 3317 3390 3391 3395 3408 3409 } chance = 12 source = "vanilla RUSFlavor 32509"
+  title = "Alaska Purchase" why = "Russia sells Alaska to the United States for 7.2 million dollars." }
+treaty = { id = nicobar years = { 1867 1870 } kind = cession from = { DEN } to = { ENG }
+  provinces = { 3264 } chance = 12 source = "history"
+  title = "Sale of the Nicobar Islands" why = "Denmark sells the Nicobar Islands to Britain." }
+treaty = { id = dutch_gold_coast years = { 1870 1873 } kind = cession from = { NET } to = { ENG }
+  provinces = { 1909 } chance = 15 source = "history; TGC East Indies 952508"
+  title = "Anglo-Dutch Gold Coast Treaty" why = "The Netherlands cede their Gold Coast forts to Britain." }
+treaty = { id = st_petersburg_1875 years = { 1874 1877 } kind = swap from = { JAP } to = { RUS }
+  provinces = { 1086 1087 } back = { 1088 1089 } chance = 15 source = "history"
+  title = "Treaty of Saint Petersburg" why = "Japan gives up Sakhalin to Russia and receives the Kuril Islands." }
+treaty = { id = cyprus years = { 1877 1880 } kind = cession from = { TUR } to = { ENG }
+  provinces = { 855 856 857 } chance = 15 source = "history"
+  title = "Cyprus Convention" why = "The Ottoman Empire hands Cyprus to British administration." }
+treaty = { id = thessaly years = { 1880 1883 } kind = cession from = { TUR } to = { GRE }
+  provinces = { 831 832 825 } chance = 12 source = "history"
+  title = "Convention of Constantinople" why = "The Ottomans cede Thessaly and Arta to Greece under great power pressure." }
+treaty = { id = senegal_guinea years = { 1885 1887 } kind = swap from = { POR } to = { FRA }
+  provinces = { 1792 } back = { 1878 } chance = 15 source = "TGC Scramble for Africa 955181"
+  title = "Franco-Portuguese Convention" why = "Portugal gives up the Casamance; France recognises Portuguese Guinea." }
+treaty = { id = heligoland years = { 1889 1892 } kind = cession from = { ENG } to = { GER PRU }
+  provinces = { 533 } chance = 15 source = "history; TGC GERFlavor 33006"
+  title = "Heligoland-Zanzibar Treaty" why = "Britain gives Heligoland to Germany in exchange for German claims in East Africa." }
+treaty = { id = franco_siamese years = { 1893 1895 } kind = cession from = { SIA } to = { FRA }
+  cores_of = { WIA LUA CHK LAN LXA } chance = 12 source = "TGC IDOFlavor 95661"
+  title = "Franco-Siamese Treaty" why = "Siam cedes the lands east of the Mekong (Laos) to French Indochina." }
+treaty = { id = kiautschou years = { 1897 1900 } kind = cession from = { QNG CHI } to = { GER PRU }
+  provinces = { 1566 } chance = 15 source = "history"
+  title = "Kiautschou Lease" why = "China leases Kiautschou Bay (Tsingtao) to Germany." }
+treaty = { id = weihaiwei years = { 1897 1900 } kind = cession from = { QNG CHI } to = { ENG }
+  provinces = { 1569 } chance = 15 source = "history"
+  title = "Weihaiwei Lease" why = "China leases Weihaiwei to Britain." }
+treaty = { id = port_arthur years = { 1897 1900 } kind = cession from = { QNG CHI MCK } to = { RUS }
+  provinces = { 1481 } chance = 15 source = "history; TGC China 90909"
+  title = "Port Arthur Lease" why = "China leases Port Arthur to Russia." }
+treaty = { id = carolines years = { 1898 1901 } kind = cession from = { SPA } to = { GER PRU }
+  provinces = { 2521 2518 2519 2579 610 } chance = 15 source = "history; TGC GERFlavor 33026"
+  title = "German-Spanish Treaty" why = "Spain sells the Caroline, Northern Mariana and Palau islands to Germany." }
+treaty = { id = guyana_award years = { 1898 1900 } kind = cession from = { VNZ } to = { ENG GCO GUY }
+  provinces = { 2243 } regions = { ENG_1979 } chance = 15 source = "TGC VNZFlavor 50028"
+  title = "Paris Arbitral Award" why = "The tribunal gives most of the Essequibo to British Guiana." }
+treaty = { id = alaska_boundary years = { 1903 1904 } kind = cession from = { ENG CAN } to = { USA }
+  provinces = { 2 } chance = 20 source = "TGC USA_Expansion 1904191425"
+  title = "Alaska Boundary Tribunal" why = "The panhandle coast goes to the United States." }
+treaty = { id = anglo_siamese years = { 1908 1910 } kind = cession from = { SIA PAT } to = { ENG EIC }
+  provinces = { 1389 1391 } chance = 15 source = "TGC East Indies 97123"
+  title = "Anglo-Siamese Treaty" why = "Siam cedes Kedah, Kelantan, Perlis and Terengganu to British Malaya." }
+treaty = { id = bul_tur_1913 years = { 1913 1915 } kind = population from = { TUR } to = { BUL } chance = 15
+  source = "history" title = "Ottoman-Bulgarian Convention" why = "Bulgaria and the Ottoman Empire exchange their minorities along the border." }
+treaty = { id = simla years = { 1914 1915 } kind = cession from = { TIB QNG CHI } to = { ENG HND }
+  provinces = { 1593 } chance = 15 source = "TGC China 131711"
+  title = "Simla Convention" why = "Tibet accepts the McMahon Line; Tawang goes to British India." }
+treaty = { id = danish_west_indies years = { 1916 1918 } kind = cession from = { DEN } to = { USA }
+  provinces = { 2223 } chance = 15 source = "history; TGC DANFlavor 36225"
+  title = "Sale of the Danish West Indies" why = "Denmark sells its Caribbean islands to the United States." }
+treaty = { id = schleswig years = { 1919 1922 } kind = cession from = { GER PRU SWH } to = { DEN }
+  provinces = { 371 370 } majority = yes chance = 20 source = "history"
+  title = "Schleswig Plebiscites" why = "Northern Schleswig votes to join Denmark; the south stays German." }
+treaty = { id = gre_bul_1919 years = { 1919 1921 } kind = population from = { BUL } to = { GRE } chance = 15
+  source = "history" title = "Convention of Neuilly" why = "Greece and Bulgaria agree on a reciprocal emigration of their minorities." }
+treaty = { id = leticia years = { 1922 1923 } kind = cession from = { PEU ECU } to = { CLM }
+  provinces = { 2289 2284 } chance = 15 source = "TGC ECUFlavor 46627"
+  title = "Salomon-Lozano Treaty" why = "Peru cedes the Leticia trapeze on the Amazon to Colombia." }
+treaty = { id = lausanne years = { 1922 1925 } kind = population from = { TUR } to = { GRE } chance = 20
+  source = "history" title = "Lausanne Population Exchange" why = "Greece and Turkey exchange their Orthodox and Muslim populations." }
+treaty = { id = jubaland years = { 1924 1926 } kind = cession from = { ENG } to = { ITA }
+  provinces = { 1870 } chance = 15 source = "history"
+  title = "Cession of Jubaland" why = "Britain cedes Jubaland to Italian Somaliland." }
+treaty = { id = saar years = { 1934 1936 } kind = cession from = { FRA } to = { GER }
+  provinces = { 573 } majority = yes chance = 25 source = "history"
+  title = "Saar Plebiscite" why = "The Saar votes to return to Germany." }
