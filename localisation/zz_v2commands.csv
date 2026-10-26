@@ -11,17 +11,33 @@ V2CMD_TT_V2BLOC_MAPBTN;Colour the political map by bloc (countries outside blocs
 V2CMD_TT_V2DIP_TREATY;Exchange provinces or populations with this country. The AI weighs culture, cores, power and relations.;;;;;;;;;;;;x
 V2CMD_TT_V2DIP_BLOC;Invite this country into your power bloc (or found one). With yesmen on, the AI accepts.;;;;;;;;;;;;x
 V2CMD_TT_V2DIP_BLOCS;Open the power bloc panel.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_PICK;While on, every province you click on the map is added to (or removed from) the treaty.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_MINE;Ask for every province of theirs where your own culture is the majority.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_THEIRS;Offer every province of yours where their culture is the majority.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_CLEAR;Empty both lists.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_PROV;Send the province exchange. A refusal costs 10 relations.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_OPT0;Your people living with them come to you AND their people living with you go to them.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_OPT1;Only your people living in their country come home to you.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_OPT2;Only their people living in your country go home to them.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_POP;Exchange the population only. Shared cultures stay. A refusal costs 5 relations.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_SAFE;Pay for ships, trains and relief so nobody dies on the way. Without it about 10% of the people who move die.;;;;;;;;;;;;x
-V2CMD_TT_V2TR_BOTH;Provinces and population in one treaty: one answer for both.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX0;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX1;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX2;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX3;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX4;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX5;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX6;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LX7;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX0;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX1;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX2;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX3;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX4;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX5;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX6;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RX7;Remove this article.;;;;;;;;;;;;x
+V2CMD_TT_V2TR_THEIRS;Offer every province of yours where their people are the majority.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LMONEY;Offer money (each click adds 10,000). Money makes almost any deal acceptable.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_LPOP;Article: their people living in your country go home to them.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_SAFE;Pay for ships, trains and relief: nobody dies on the way (+10 acceptance). Without it about 10% of the people who move die.;;;;;;;;;;;;x
+V2CMD_TT_V2TR_MINE;Ask for every province of theirs where your people are the majority.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RMONEY;Ask them for money (each click adds 10,000).;;;;;;;;;;;;x
+V2CMD_TT_V2T3_RPOP;Article: your people living in their country come home to you.;;;;;;;;;;;;x
+V2CMD_TT_V2TR_PICK;While on, every province you click on the map is added to (or removed from) the treaty: yours on the left, theirs on the right.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_COUNTER;Add the money they ask for to your side.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_CLEAR;Remove every article.;;;;;;;;;;;;x
+V2CMD_TT_V2T3_PROPOSE;Send the treaty. They answer at once. A refusal costs 10 relations.;;;;;;;;;;;;x
 V2CMD_TT_V2TOAST_BG;Treaty news. Click to dismiss, the last ones are listed in the BLOCS tab.;;;;;;;;;;;;x
 V2CMD_TT_V2REQ_ACCEPT;Sign the treaty. Relations +15.;;;;;;;;;;;;x
 V2CMD_TT_V2REQ_DECLINE;Refuse. See the last line for the consequences.;;;;;;;;;;;;x

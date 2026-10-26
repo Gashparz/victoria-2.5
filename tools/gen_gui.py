@@ -270,62 +270,78 @@ add(thin("v2dip_bloc", 200, 28, " ", "v2dip_bloctext"))
 add(thin("v2dip_blocs", DBW - 172, 28, "Power blocs"))
 add('\t}\n')
 
-# ---------------- treaty window ----------------
-TH = 700
-add(window_head("v2treaty_window", W, TH, "GFX_v2treaty_bg", "v2tr_header"))
-add(tbox("v2tr_howto", 45, 50, TXT, W - 90, 18, "centre",
-         "1. Pick on map, then click provinces (yours = you give, theirs = you ask)   2. Choose who moves   3. Propose"))
-CW = (W - 80) // 2          # column width
-cols = [("v2tr_g", 35), ("v2tr_t", 45 + CW)]
-for pre, x in cols:
-    add(deco(pre + "hb", bar(CW), x, 72))
-    add(tbox(pre + "h", x + 8, 74, HEAD, CW - 16, 20))
+# ---------------- treaty window (Victoria 3 style: articles, acceptance, counter-offer) ----------------
+TW3, TH = 900, 690
+add(window_head("v2treaty_window", TW3, TH, "GFX_v2treaty_bg", "v2tr_header"))
+add(tbox("v2t3_sub", 0, 52, HEAD, TW3, 20, "centre"))
+CW = (TW3 - 90) // 2
+cols = [("l", 35), ("r", 55 + CW)]
+for side, x in cols:
+    add(deco(f"v2t3_{side}hb", bar(CW), x, 80))
+    add(tbox(f"v2t3_{side}head", x + 8, 82, HEAD, CW - 16, 20))
     for r in range(8):
-        y = 98 + r * 20
-        add(deco(f"{pre}bg{r}", rowbg(CW), x, y))
-        add(tbox(f"{pre}{r}", x + 8, y + 2, TXT, CW - 16, 18))
-y = 98 + 8 * 20 + 8
-xs = [35, 35 + (W - 70 - 144) // 3, 35 + 2 * (W - 70 - 144) // 3, W - 35 - 144]
-add(button("v2tr_pick", xs[0], y, " ", "While on, every province you click on the map is added to (or removed from) the treaty."))
-add(tbox("v2tr_pick_text", xs[0] + 4, y + 8, TXT, 136, 18, "centre"))
-add(button("v2tr_mine", xs[1], y, "+ My people", "Ask for every province of theirs where your own culture is the majority."))
-add(button("v2tr_theirs", xs[2], y, "+ Their people", "Offer every province of yours where their culture is the majority."))
-add(button("v2tr_clear", xs[3], y, "Clear", "Empty both lists."))
-# province exchange section
-y += 46
-add(deco("v2tr_phb", bar(W - 70), 35, y))
-add(tbox("v2tr_ptitle", 45, y + 2, HEAD, 300, 20, "left", "PROVINCE EXCHANGE"))
-add(tbox("v2tr_pchance", W - 245, y + 2, HEAD, 200, 20, "right"))
-for i in range(5):
-    add(tbox(f"v2tr_pw{i}", 45, y + 28 + i * 18, TXT, W - 260, 18))
-add(button("v2tr_prov", W - 35 - 144, y + 34, "Propose", "Send the province exchange. A refusal costs 10 relations."))
-y += 28 + 5 * 18 + 10
-# population section
-add(deco("v2tr_ohb", bar(W - 70), 35, y))
-add(tbox("v2tr_otitle", 45, y + 2, HEAD, 300, 20, "left", "POPULATION SWAP"))
-add(tbox("v2tr_popchance", W - 245, y + 2, HEAD, 200, 20, "right"))
-add(tbox("v2tr_popsum", 45, y + 28, TXT, W - 90, 18))
-ox = [35, 35 + 150, 35 + 300]
-tipsopt = ["Your people living with them come to you AND their people living with you go to them.",
-           "Only your people living in their country come home to you.",
-           "Only their people living in your country go home to them."]
-for i in range(3):
-    add(button(f"v2tr_opt{i}", ox[i], y + 50, " ", tipsopt[i]))
-    add(tbox(f"v2tr_opt{i}_text", ox[i] + 4, y + 58, TXT, 136, 18, "centre"))
-add(button("v2tr_pop", W - 35 - 144, y + 50, "Swap", "Exchange the population only. Shared cultures stay. A refusal costs 5 relations."))
-add(button("v2tr_safe", 35, y + 90, " ", "Pay for ships, trains and relief so nobody dies on the way. Without it about 10% of the people who move die.",
-           sprite="GFX_button_standard_177"))
-add(tbox("v2tr_safe_text", 39, y + 98, TXT, 169, 18, "centre", "Safe transport"))
-for i in range(2):
-    add(tbox(f"v2tr_ow{i}", 230, y + 90 + i * 18, TXT, W - 275, 18))
-y += 90 + 2 * 18 + 8
-# both together
-add(tbox("v2tr_bothtext", 45, y + 8, HEAD, W - 260, 20))
-add(button("v2tr_both", W - 35 - 177, y, "Propose both", "Provinces and population in one treaty: one answer for both.", sprite="GFX_button_standard_177"))
-y += 42
-add(deco("v2tr_sbar", bar(W - 70, 24), 35, y))
-add(tbox("v2tr_status", 45, y + 2, TXT, W - 90, 20))
-assert y + 24 + 30 <= TH, y
+        y = 106 + r * 22
+        add(deco(f"v2t3_{side}bg{r}", rowbg(CW, 21), x, y))
+        add(tbox(f"v2t3_{side}{r}", x + 8, y + 2, TXT, CW - 80, 18))
+        add(tbox(f"v2t3_{side}s{r}", x + CW - 72, y + 2, TXT, 40, 18, "right"))
+        key = f"V2CMD_TT_V2T3_{side.upper()}X{r}"
+        tips[key] = "Remove this article."
+        add(f"""		guiButtonType = {{
+			name = "v2t3_{side}x{r}"
+			quadTextureSprite = "GFX_close_province"
+			position = {{ x = {x + CW - 26} y = {y + 1} }}
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "{key}"
+		}}
+""")
+yb = 106 + 8 * 22 + 6
+# add-article buttons under each column (thin buttons, 2 per row)
+def thinb(name, x, y, text, tip, label=None, w=None):
+    key = "V2CMD_TT_" + name.upper(); tips[key] = tip
+    sprite = "GFX_button_thin_160" if not w else w
+    r = f"""		guiButtonType = {{
+			name = "{name}"
+			quadTextureSprite = "{sprite}"
+			position = {{ x = {x} y = {y} }}
+			buttonText = "{text}"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "{key}"
+		}}
+"""
+    if label: r += tbox(label, x + 4, y + 4, TXT, 152, 18, "centre")
+    return r
+lx, rx = 35, 55 + CW
+add(thinb("v2tr_theirs", lx, yb, "+ Lands of their people", "Offer every province of yours where their people are the majority."))
+add(thinb("v2t3_lmoney", lx + 170, yb, "+ Pay 10,000", "Offer money (each click adds 10,000). Money makes almost any deal acceptable."))
+add(thinb("v2t3_lpop", lx, yb + 28, " ", "Article: their people living in your country go home to them.", "v2t3_lpop_text"))
+add(thinb("v2t3_safe", lx + 170, yb + 28, " ", "Pay for ships, trains and relief: nobody dies on the way (+10 acceptance). Without it about 10% of the people who move die.", "v2t3_safe_text"))
+add(thinb("v2tr_mine", rx, yb, "+ Lands of my people", "Ask for every province of theirs where your people are the majority."))
+add(thinb("v2t3_rmoney", rx + 170, yb, "+ Demand 10,000", "Ask them for money (each click adds 10,000)."))
+add(thinb("v2t3_rpop", rx, yb + 28, " ", "Article: your people living in their country come home to you.", "v2t3_rpop_text"))
+add(thinb("v2tr_pick", rx + 170, yb + 28, " ", "While on, every province you click on the map is added to (or removed from) the treaty: yours on the left, theirs on the right.", "v2tr_pick_text"))
+# acceptance panel
+ya = yb + 66
+add(deco("v2t3_ahb", bar(TW3 - 70, 24), 35, ya))
+add(tbox("v2t3_accept", 45, ya + 3, HEAD, TW3 - 90, 20, "centre"))
+add(tbox("v2t3_bar", 0, ya + 30, HEAD, TW3, 20, "centre"))
+add(tbox("v2t3_scale", 0, ya + 50, TXT, TW3, 18, "centre"))
+for i in range(8):
+    col, row = i % 2, i // 2
+    add(tbox(f"v2t3_why{i}", 45 + col * (TW3 // 2 - 20), ya + 74 + row * 19, TXT, TW3 // 2 - 50, 18))
+yc = ya + 74 + 4 * 19 + 8
+add(tbox("v2t3_countertext", 45, yc + 8, HEAD, TW3 - 300, 20))
+add(button("v2t3_counter", TW3 - 35 - 177, yc, "Accept their terms", "Add the money they ask for to your side.", sprite="GFX_button_standard_177"))
+yd = yc + 42
+add(deco("v2tr_sbar", bar(TW3 - 70, 24), 35, yd))
+add(tbox("v2tr_status", 45, yd + 3, TXT, TW3 - 90, 20))
+ye = yd + 34
+add(tbox("v2t3_money", 45, ye + 8, TXT, 250, 18))
+add(button("v2t3_clear", TW3 // 2 - 160, ye, "Clear", "Remove every article."))
+add(button("v2t3_propose", TW3 - 35 - 200, ye, "Propose treaty", "Send the treaty. They answer at once. A refusal costs 10 relations.", sprite="GFX_button_standard_200"))
+assert ye + 40 <= TH, ye
 add('\t}\n')
 # ---------------- treaty news toast ----------------
 TW, THt = 640, 34

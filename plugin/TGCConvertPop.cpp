@@ -1505,9 +1505,26 @@ uint32_t grey_of(uint32_t argb) {
     return (argb & 0xFF000000u) | (v << 16) | (v << 8) | v;
 }
 
+uint32_t treaty_map_color(uintptr_t prov);
+extern bool g_treaty_map;
+bool treaty_window_open();
+void treaty_overlay(uintptr_t cmap) {
+    uintptr_t* b = rd<uintptr_t*>(cmap + 0x1C);
+    uintptr_t* e = rd<uintptr_t*>(cmap + 0x20);
+    for (uintptr_t* it = b ? b + 1 : nullptr; it && it < e; ++it) {
+        uint32_t* entry = reinterpret_cast<uint32_t*>(*it);
+        if (!entry || !entry[3]) continue;
+        uint32_t c = treaty_map_color(entry[3]);
+        if (c) { entry[0] = (entry[0] & 0xFF000000u) | c; entry[1] = (entry[1] & 0xFF000000u) | c; }
+    }
+}
+void pol_palette_bloc(uintptr_t cmap);
 void __stdcall pol_palette_hook(uintptr_t cmap) {
     reinterpret_cast<void(__stdcall*)(uintptr_t)>(g_pol_target)(cmap);
-    if (!g_bloc_map) return;
+    if (g_bloc_map) pol_palette_bloc(cmap);
+    if (g_treaty_map && treaty_window_open()) treaty_overlay(cmap);
+}
+void pol_palette_bloc(uintptr_t cmap) {
     PerfScope ps(P_PALETTE);
     static uint32_t color_of[4096];
     bloc_cache_refresh();
@@ -3172,8 +3189,11 @@ void prov_row(char* out, size_t n, uint32_t id, uint32_t me, uint32_t ai, uint32
     snprintf(out, n, "%s   %s, %s%s", pn(id), ppl, culture_display(st.top_culture), core);
 }
 constexpr int kTrRows = 8, kTrWhy = 5, kTrPopWhy = 3;
+void treaty_v3_refresh();
 void treaty_panel_refresh() {
     if (!g_treatywin) return;
+    treaty_v3_refresh();
+    return;
     uint32_t me = player_index(), ai = g_tr_partner;
     char buf[200], nm[24];
     if (ai) snprintf(buf, sizeof(buf), "Treaty with %s", cn(ai));
@@ -3267,6 +3287,7 @@ void treaty_panel_refresh() {
     } else snprintf(buf, sizeof(buf), " ");
     tb_set(g_treatywin, "v2tr_bothtext", buf);
 }
+void treaty_v3_subscribe(void* w);
 void treaty_open() {
     if (!g_treatywin) {
         g_treatywin = gui_create("v2treaty_window");
@@ -3284,6 +3305,7 @@ void treaty_open() {
         subscribe(g_treatywin, "v2tr_opt2", g_tr_opt2_glue, &tcp_tr_opt2_thunk);
         subscribe(g_treatywin, "v2tr_both", g_tr_both_glue, &tcp_tr_both_thunk);
         subscribe(g_treatywin, "v2tr_safe", g_tr_safe_glue, &tcp_tr_safe_thunk);
+        treaty_v3_subscribe(g_treatywin);
         logf("treaty: window created");
     }
     treaty_panel_refresh();
@@ -3300,7 +3322,8 @@ extern "C" void __cdecl tcp_on_tr_add() {
     if (p) treaty_toggle(rd<uint32_t>(p + 0x58));
     treaty_open();
 }
-extern "C" void __cdecl tcp_on_tr_close() { win_show(g_treatywin, false); }
+extern bool g_treaty_map;
+extern "C" void __cdecl tcp_on_tr_close() { win_show(g_treatywin, false); g_treaty_map = false; bloc_map_redraw(); }
 extern "C" void __cdecl tcp_on_tr_prov() { treaty_propose_provinces(); treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_pop() { treaty_propose_population(); treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_clear() { treaty_clear(); snprintf(g_tr_status, sizeof(g_tr_status), "Treaty cleared."); treaty_panel_refresh(); }
@@ -3552,6 +3575,7 @@ void install_dipwin_capture() {
 }
 
 #include "ai_treaties.inc"
+#include "treaty_v3.inc"
 
 // CSecedeProvinceEffect::Execute (vtable slot 0x00E2B004 -> 0x00887420, thiscall (scope, x), ret 8). Hooked to
 // recognise historical treaties carried out by the game's own decisions and events. transfer_province calls
@@ -3718,7 +3742,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-27g (population exchanges: losses on the way, paid safe transport)");
+    logf("TGC Convert Pop build 2026-10-28a (treaty window in the style of Victoria 3: articles, acceptance score, counter-offer, treaty map)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
