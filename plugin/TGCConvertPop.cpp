@@ -3269,8 +3269,7 @@ void treaty_frame_sync(bool open, uintptr_t prov) {
 // ================= Diplomacy window integration =================
 // CDiplomacyWindow (vtable 0x00E07450) is built by 0x0061B820 (stdcall-like: [esp+4] = this). We detour its
 // prologue (55 8B EC 6A FF) to remember the object. Its gui window is at +0x4C (vt 7 = IsVisible reads
-// [this+0x4C]+0x67). Window vt 0x6C finds a child window, vt 0x3C a text box. The selected country's name is the
-// text of diplomacy_country_facts/country_name; we map it back to a country by its localised name.
+// [this+0x4C]+0x67). The selected country is a CTag inside the object (+0x388/+0x38C).
 }  // namespace
 extern "C" { uintptr_t g_dipobj = 0; uintptr_t g_dipctor_cont = 0; }
 extern "C" void tcp_dip_treaty_thunk();
@@ -3281,56 +3280,17 @@ namespace {
 
 void* g_dipbar = nullptr;
 alignas(8) uint8_t g_dip_treaty_glue[kGlueSize], g_dip_bloc_glue[kGlueSize], g_dip_blocs_glue[kGlueSize];
-int g_dip_sel_off = -1;  // learned: offset in CDiplomacyWindow that holds the selected CCountry*
 bool dip_visible() {
     if (!g_dipobj || IsBadReadPtr((void*)g_dipobj, 0x60) || rd<uintptr_t>(g_dipobj) != R(VA_DIPWIN_VT)) return false;
     uintptr_t gui = rd<uintptr_t>(g_dipobj + 0x4C);
     return gui && rd<uint8_t>(gui + 0x67) != 0;
 }
-int country_index_of_ptr(uintptr_t c) {
-    int r = -1;
-    if (!c) return -1;
-    for_each_tag([&](uint32_t, uint32_t idx) { if (r < 0 && country_at((int)idx) == c) r = (int)idx; });
-    return r;
-}
+// The window keeps the selected country as a CTag: lo at +0x388, index at +0x38C (see 0x0062761D, which also
+// falls back to the player when the selected country owns no provinces). Works with any mod or language.
 uint32_t dip_selected() {
-    uintptr_t gui = rd<uintptr_t>(g_dipobj + 0x4C);
-    GameString n;
-    gs_view(&n, "diplomacy_country_facts", 23);
-    void* facts = vcall1((void*)gui, 0x6C, &n);
-    const char* text = nullptr;
-    if (facts) {
-        gs_view(&n, "country_name", 12);
-        uint8_t* tb = (uint8_t*)vcall1(facts, 0x3C, &n);
-        if (tb) text = gs_cstr(reinterpret_cast<const GameString*>(tb + 0xDC));
-    }
-    static char last_text[96] = "";
-    static uint32_t last_idx = 0;
-    if (text && strcmp(text, last_text) == 0 && last_idx) return last_idx;
-    uint32_t found = 0;
-    if (text && *text) {
-        char nb[96];
-        for_each_tag([&](uint32_t, uint32_t idx) {
-            if (found || !country_alive(country_at((int)idx))) return;
-            if (_stricmp(name_of(idx, nb, sizeof(nb)), text) == 0) found = idx;
-        });
-    }
-    if (found && g_dip_sel_off < 0) {
-        uintptr_t want = country_at((int)found);
-        for (int off = 0x5C; off < 0x300; off += 4)
-            if (!IsBadReadPtr((void*)(g_dipobj + off), 4) && rd<uintptr_t>(g_dipobj + off) == want) { g_dip_sel_off = off; break; }
-        logf("diplomacy: '%s' -> %s, selected country pointer at +0x%X", text, cn(found), g_dip_sel_off);
-    }
-    if (!found && g_dip_sel_off >= 0) {
-        int i = country_index_of_ptr(rd<uintptr_t>(g_dipobj + g_dip_sel_off));
-        if (i > 0) found = (uint32_t)i;
-    }
-    if (text && strcmp(text, last_text) != 0) {
-        if (!found) logf("diplomacy: could not match the country name '%s'", text);
-        snprintf(last_text, sizeof(last_text), "%s", text);
-    }
-    last_idx = found;
-    return found;
+    uint32_t idx = rd<uint32_t>(g_dipobj + 0x38C);
+    uintptr_t c = country_at((int)idx);
+    return c && country_alive(c) ? idx : 0;
 }
 extern "C" void __cdecl tcp_on_dip_treaty() {
     uint32_t sel = g_dip_sel;
@@ -3555,7 +3515,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-26a (diplomacy action bar, new treaty window)");
+    logf("TGC Convert Pop build 2026-10-26b (mod-free diplomacy bar: selected country from the window itself)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
