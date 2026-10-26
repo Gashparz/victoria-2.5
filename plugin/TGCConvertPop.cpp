@@ -2653,6 +2653,7 @@ extern "C" void __cdecl tcp_on_diplo_invite() {
             invite_core(b, (int)sel, g_bloc_status, sizeof(g_bloc_status));
         }
     }
+    logf("bloc button: target %s -> %s", sel ? cn(sel) : "none", g_bloc_status);
     // show the result in the bloc panel, on the player's bloc
     collect_blocs();
     for (int k = 0; k < g_nblocs; ++k)
@@ -3523,7 +3524,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-26c (diplomacy bar closes the diplomacy screen before opening our windows)");
+    logf("TGC Convert Pop build 2026-10-26d (diplomacy bar closes the diplomacy screen; bloc button logs its result)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");
