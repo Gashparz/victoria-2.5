@@ -2730,6 +2730,10 @@ void* g_traddwin = nullptr;
 extern "C" void tcp_tr_add_thunk();
 extern "C" void tcp_tr_close_thunk();
 extern "C" void tcp_tr_prov_thunk();
+extern "C" void tcp_tr_opt0_thunk();
+extern "C" void tcp_tr_opt1_thunk();
+extern "C" void tcp_tr_opt2_thunk();
+extern "C" void tcp_tr_both_thunk();
 extern "C" void tcp_tr_pop_thunk();
 extern "C" void tcp_tr_clear_thunk();
 extern "C" void tcp_tr_open_thunk();
@@ -2741,7 +2745,8 @@ extern "C" ConsoleResult* __cdecl cmd_migrate_all_pops(ConsoleResult* out, ArgVe
 namespace {
 alignas(8) uint8_t g_tr_add_glue[kGlueSize], g_tr_close_glue[kGlueSize], g_tr_prov_glue[kGlueSize], g_tr_pop_glue[kGlueSize],
     g_tr_clear_glue[kGlueSize], g_tr_open_glue[kGlueSize], g_tr_pick_glue[kGlueSize], g_tr_mine_glue[kGlueSize],
-    g_tr_theirs_glue[kGlueSize], g_tr_popopt_glue[kGlueSize];
+    g_tr_theirs_glue[kGlueSize], g_tr_popopt_glue[kGlueSize], g_tr_opt0_glue[kGlueSize], g_tr_opt1_glue[kGlueSize],
+    g_tr_opt2_glue[kGlueSize], g_tr_both_glue[kGlueSize];
 
 uint32_t ctag_lo(uint32_t idx) {
     uint32_t lo = 0;
@@ -3058,6 +3063,7 @@ void treaty_propose_provinces() {
     g_bloc_cache_dirty = true;
     bloc_map_redraw();
 }
+void treaty_propose_population_now(uint32_t me, uint32_t ai);
 void treaty_propose_population() {
     uint32_t me = player_index(), ai = g_tr_partner;
     char t[4];
@@ -3071,6 +3077,11 @@ void treaty_propose_population() {
         snprintf(g_tr_status, sizeof(g_tr_status), "%s refused the population exchange (chance %d%%). Relations -5.", cn(ai), pe.e.chance);
         return;
     }
+    treaty_propose_population_now(me, ai);
+    snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: about %llu people came to you, %llu went to them.", cn(ai),
+             rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", (unsigned long long)pe.they_lose, (unsigned long long)pe.they_get);
+}
+void treaty_propose_population_now(uint32_t me, uint32_t ai) {
     uintptr_t only = popopt_culture();
     uintptr_t cm = country_at((int)me), ca = country_at((int)ai);
     if (only) {
@@ -3086,8 +3097,6 @@ void treaty_propose_population() {
         }
         popcult_refresh(me, ai);
     }
-    snprintf(g_tr_status, sizeof(g_tr_status), "%s accepted%s: about %llu people came to you, %llu went to them.", cn(ai),
-             rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", (unsigned long long)pe.they_lose, (unsigned long long)pe.they_get);
 }
 
 // ---- the treaty panel ----
@@ -3171,6 +3180,24 @@ void treaty_panel_refresh() {
     }
     tb_set(g_treatywin, "v2tr_status", g_tr_status[0] ? g_tr_status : " ");
     tb_set(g_treatywin, "v2tr_pick_text", g_tr_pick ? C_GREEN "Pick on map: ON" C_END : "Pick on map: off");
+    const char* optl[3] = {"Both ways", "My people home", "Their people home"};
+    int optsel[3] = {0, 2, 1};
+    for (int i = 0; i < 3; ++i) {
+        char nm[24], lb[48];
+        snprintf(nm, sizeof(nm), "v2tr_opt%d_text", i);
+        if (g_tr_popopt == optsel[i]) snprintf(lb, sizeof(lb), C_GREEN "> %s <" C_END, optl[i]);
+        else snprintf(lb, sizeof(lb), "%s", optl[i]);
+        tb_set(g_treatywin, nm, lb);
+    }
+    if (ai) {
+        Eval e2 = eval_provinces(me, ai);
+        PopEval p2 = eval_population(me, ai);
+        if (e2.possible && p2.e.possible) {
+            int c = e2.chance * p2.e.chance / 100;
+            snprintf(buf, sizeof(buf), "Both together: chance %s%d%%" C_END, c >= 50 ? C_GREEN : C_RED, c);
+        } else snprintf(buf, sizeof(buf), "Both together: needs provinces on the lists and people to move");
+    } else snprintf(buf, sizeof(buf), " ");
+    tb_set(g_treatywin, "v2tr_bothtext", buf);
 }
 void treaty_open() {
     if (!g_treatywin) {
@@ -3184,6 +3211,10 @@ void treaty_open() {
         subscribe(g_treatywin, "v2tr_mine", g_tr_mine_glue, &tcp_tr_mine_thunk);
         subscribe(g_treatywin, "v2tr_theirs", g_tr_theirs_glue, &tcp_tr_theirs_thunk);
         subscribe(g_treatywin, "v2tr_popopt", g_tr_popopt_glue, &tcp_tr_popopt_thunk);
+        subscribe(g_treatywin, "v2tr_opt0", g_tr_opt0_glue, &tcp_tr_opt0_thunk);
+        subscribe(g_treatywin, "v2tr_opt1", g_tr_opt1_glue, &tcp_tr_opt1_thunk);
+        subscribe(g_treatywin, "v2tr_opt2", g_tr_opt2_glue, &tcp_tr_opt2_thunk);
+        subscribe(g_treatywin, "v2tr_both", g_tr_both_glue, &tcp_tr_both_thunk);
         logf("treaty: window created");
     }
     treaty_panel_refresh();
@@ -3241,6 +3272,39 @@ extern "C" void __cdecl tcp_on_tr_theirs() {  // my land where their people live
     }
     treaty_panel_refresh();
 }
+extern "C" void __cdecl tcp_on_tr_opt0() { g_tr_popopt = 0; treaty_panel_refresh(); }
+extern "C" void __cdecl tcp_on_tr_opt1() { g_tr_popopt = 2; treaty_panel_refresh(); }  // your people come home
+extern "C" void __cdecl tcp_on_tr_opt2() { g_tr_popopt = 1; treaty_panel_refresh(); }  // their people go home
+// Provinces and population in one treaty: one answer for both (both chances must hold).
+void treaty_propose_both() {
+    uint32_t me = player_index(), ai = g_tr_partner;
+    Eval e = eval_provinces(me, ai);
+    PopEval pe = eval_population(me, ai);
+    if (!e.possible) { snprintf(g_tr_status, sizeof(g_tr_status), "Provinces: %s", e.n ? e.why[0] : "not possible."); return; }
+    if (!pe.e.possible) { snprintf(g_tr_status, sizeof(g_tr_status), "Population: %s", pe.e.n ? pe.e.why[0] : "not possible."); return; }
+    if (!g_merge_fix_ok) { snprintf(g_tr_status, sizeof(g_tr_status), "Population exchange disabled (merge fix missing)."); return; }
+    int chance = e.chance * pe.e.chance / 100;
+    bool yes = roll(chance);
+    logf("treaty both with %s: chance %d%%, %s", cn(ai), chance, yes ? "accepted" : "refused");
+    if (!yes) {
+        relation_add(me, ai, -10);
+        snprintf(g_tr_status, sizeof(g_tr_status), "%s refused the treaty (chance %d%%). Relations -10.", cn(ai), chance);
+        return;
+    }
+    int moved = 0;
+    for (int i = 0; i < g_tr_ntake; ++i) moved += transfer_province(g_tr_take[i], me);
+    for (int i = 0; i < g_tr_ngive; ++i) moved += transfer_province(g_tr_give[i], ai);
+    uint32_t keep_partner = ai;
+    treaty_propose_population_now(me, ai);
+    relation_add(me, ai, 10);
+    snprintf(g_tr_status, sizeof(g_tr_status), "%s signed%s: %d province(s) changed hands and the populations were exchanged.", cn(ai),
+             rd<uint8_t>(R(VA_YESMEN)) ? " [yesmen]" : "", moved);
+    g_tr_ngive = g_tr_ntake = 0;
+    g_tr_partner = keep_partner;
+    g_bloc_cache_dirty = true;
+    bloc_map_redraw();
+}
+extern "C" void __cdecl tcp_on_tr_both() { treaty_propose_both(); treaty_panel_refresh(); }
 extern "C" void __cdecl tcp_on_tr_popopt() {
     popcult_refresh(player_index(), g_tr_partner);
     g_tr_popopt = (g_tr_popopt + 1) % (3 + g_tr_npopcult);
@@ -3257,6 +3321,10 @@ asm(".text\n"
     "    .globl _tcp_tr_pick_thunk\n_tcp_tr_pick_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_pick\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_mine_thunk\n_tcp_tr_mine_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_mine\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_theirs_thunk\n_tcp_tr_theirs_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_theirs\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_opt0_thunk\n_tcp_tr_opt0_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_opt0\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_opt1_thunk\n_tcp_tr_opt1_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_opt1\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_opt2_thunk\n_tcp_tr_opt2_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_opt2\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_tr_both_thunk\n_tcp_tr_both_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_both\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_tr_popopt_thunk\n_tcp_tr_popopt_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_tr_popopt\n    popfl\n    popal\n    ret\n");
 #undef TCP_THUNK
 
@@ -3306,9 +3374,12 @@ uint32_t dip_selected() {
     return c && country_alive(c) ? idx : 0;
 }
 // Our windows live on a lower layer than the diplomacy screen, so close it before opening one of ours.
+// The base window's close button handler (0x007538C0, thiscall, no args) closes the screen through the in-game
+// UI manager; hiding the gui window directly left the game thinking the screen was still open.
+constexpr uintptr_t VA_WINDOW_CLOSE = 0x007538C0;
 void dip_hide() {
     if (!dip_visible()) return;
-    win_show((void*)rd<uintptr_t>(g_dipobj + 0x4C), false);
+    reinterpret_cast<void(__fastcall*)(void*, void*)>(R(VA_WINDOW_CLOSE))((void*)g_dipobj, nullptr);
     if (g_dipbar) win_show(g_dipbar, false);
 }
 extern "C" void __cdecl tcp_on_dip_treaty() {
@@ -3566,7 +3637,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-27e (treaties with a game decision/event run natively; plugin recognises them)");
+    logf("TGC Convert Pop build 2026-10-27f (diplomacy closes properly; treaty: direction buttons, propose both)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

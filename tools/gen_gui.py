@@ -271,18 +271,20 @@ add(thin("v2dip_blocs", DBW - 172, 28, "Power blocs"))
 add('\t}\n')
 
 # ---------------- treaty window ----------------
-TH = 612
+TH = 700
 add(window_head("v2treaty_window", W, TH, "GFX_v2treaty_bg", "v2tr_header"))
+add(tbox("v2tr_howto", 45, 50, TXT, W - 90, 18, "centre",
+         "1. Pick on map, then click provinces (yours = you give, theirs = you ask)   2. Choose who moves   3. Propose"))
 CW = (W - 80) // 2          # column width
 cols = [("v2tr_g", 35), ("v2tr_t", 45 + CW)]
 for pre, x in cols:
-    add(deco(pre + "hb", bar(CW), x, 64))
-    add(tbox(pre + "h", x + 8, 66, HEAD, CW - 16, 20))
+    add(deco(pre + "hb", bar(CW), x, 72))
+    add(tbox(pre + "h", x + 8, 74, HEAD, CW - 16, 20))
     for r in range(8):
-        y = 90 + r * 20
+        y = 98 + r * 20
         add(deco(f"{pre}bg{r}", rowbg(CW), x, y))
         add(tbox(f"{pre}{r}", x + 8, y + 2, TXT, CW - 16, 18))
-y = 90 + 8 * 20 + 8
+y = 98 + 8 * 20 + 8
 xs = [35, 35 + (W - 70 - 144) // 3, 35 + 2 * (W - 70 - 144) // 3, W - 35 - 144]
 add(button("v2tr_pick", xs[0], y, " ", "While on, every province you click on the map is added to (or removed from) the treaty."))
 add(tbox("v2tr_pick_text", xs[0] + 4, y + 8, TXT, 136, 18, "centre"))
@@ -302,13 +304,22 @@ y += 28 + 5 * 18 + 10
 add(deco("v2tr_ohb", bar(W - 70), 35, y))
 add(tbox("v2tr_otitle", 45, y + 2, HEAD, 300, 20, "left", "POPULATION SWAP"))
 add(tbox("v2tr_popchance", W - 245, y + 2, HEAD, 200, 20, "right"))
-add(tbox("v2tr_popsum", 45, y + 28, TXT, W - 260, 18))
+add(tbox("v2tr_popsum", 45, y + 28, TXT, W - 90, 18))
+ox = [35, 35 + 150, 35 + 300]
+tipsopt = ["Your people living with them come to you AND their people living with you go to them.",
+           "Only your people living in their country come home to you.",
+           "Only their people living in your country go home to them."]
 for i in range(3):
-    add(tbox(f"v2tr_ow{i}", 45, y + 48 + i * 18, TXT, W - 260, 18))
-add(button("v2tr_popopt", W - 35 - 144, y + 28, " ", "Which pops move: both ways, only theirs, only yours, or a single culture (click to cycle)."))
-add(tbox("v2tr_popopt_text", W - 35 - 140, y + 36, TXT, 136, 18, "centre"))
-add(button("v2tr_pop", W - 35 - 144, y + 66, "Swap", "Each side receives its own people from the other. Shared cultures stay. A refusal costs 5 relations."))
-y += 48 + 3 * 18 + 12
+    add(button(f"v2tr_opt{i}", ox[i], y + 50, " ", tipsopt[i]))
+    add(tbox(f"v2tr_opt{i}_text", ox[i] + 4, y + 58, TXT, 136, 18, "centre"))
+add(button("v2tr_pop", W - 35 - 144, y + 50, "Swap", "Exchange the population only. Shared cultures stay. A refusal costs 5 relations."))
+for i in range(2):
+    add(tbox(f"v2tr_ow{i}", 45, y + 90 + i * 18, TXT, W - 90, 18))
+y += 90 + 2 * 18 + 8
+# both together
+add(tbox("v2tr_bothtext", 45, y + 8, HEAD, W - 260, 20))
+add(button("v2tr_both", W - 35 - 177, y, "Propose both", "Provinces and population in one treaty: one answer for both.", sprite="GFX_button_standard_177"))
+y += 42
 add(deco("v2tr_sbar", bar(W - 70, 24), 35, y))
 add(tbox("v2tr_status", 45, y + 2, TXT, W - 90, 20))
 assert y + 24 + 30 <= TH, y

@@ -1598,8 +1598,8 @@ guiTypes = {
 	windowType = {
 		name = "v2treaty_window"
 		backGround = "Background"
-		position = { x = -380 y = -306 }
-		size = { x = 760 y = 612 }
+		position = { x = -380 y = -350 }
+		size = { x = 760 y = 700 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -1629,15 +1629,26 @@ guiTypes = {
 			format = centre
 			fixedsize = yes
 		}
+		instantTextBoxType = {
+			name = "v2tr_howto"
+			position = { x = 45 y = 50 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = "1. Pick on map, then click provinces (yours = you give, theirs = you ask)   2. Choose who moves   3. Propose"
+			format = centre
+			fixedsize = yes
+		}
 		guiButtonType = {
 			name = "v2tr_ghb"
 			quadTextureSprite = "GFX_v2cmd_hdr_340x22"
-			position = { x = 35 y = 64 }
+			position = { x = 35 y = 72 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_gh"
-			position = { x = 43 y = 66 }
+			position = { x = 43 y = 74 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1649,12 +1660,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg0"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 90 }
+			position = { x = 35 y = 98 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g0"
-			position = { x = 43 y = 92 }
+			position = { x = 43 y = 100 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1666,12 +1677,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg1"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 110 }
+			position = { x = 35 y = 118 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g1"
-			position = { x = 43 y = 112 }
+			position = { x = 43 y = 120 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1683,12 +1694,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg2"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 130 }
+			position = { x = 35 y = 138 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g2"
-			position = { x = 43 y = 132 }
+			position = { x = 43 y = 140 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1700,12 +1711,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg3"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 150 }
+			position = { x = 35 y = 158 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g3"
-			position = { x = 43 y = 152 }
+			position = { x = 43 y = 160 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1717,12 +1728,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg4"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 170 }
+			position = { x = 35 y = 178 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g4"
-			position = { x = 43 y = 172 }
+			position = { x = 43 y = 180 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1734,12 +1745,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg5"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 190 }
+			position = { x = 35 y = 198 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g5"
-			position = { x = 43 y = 192 }
+			position = { x = 43 y = 200 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1751,12 +1762,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg6"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 210 }
+			position = { x = 35 y = 218 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g6"
-			position = { x = 43 y = 212 }
+			position = { x = 43 y = 220 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1768,12 +1779,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_gbg7"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 35 y = 230 }
+			position = { x = 35 y = 238 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_g7"
-			position = { x = 43 y = 232 }
+			position = { x = 43 y = 240 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1785,12 +1796,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_thb"
 			quadTextureSprite = "GFX_v2cmd_hdr_340x22"
-			position = { x = 385 y = 64 }
+			position = { x = 385 y = 72 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_th"
-			position = { x = 393 y = 66 }
+			position = { x = 393 y = 74 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1802,12 +1813,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg0"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 90 }
+			position = { x = 385 y = 98 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t0"
-			position = { x = 393 y = 92 }
+			position = { x = 393 y = 100 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1819,12 +1830,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg1"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 110 }
+			position = { x = 385 y = 118 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t1"
-			position = { x = 393 y = 112 }
+			position = { x = 393 y = 120 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1836,12 +1847,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg2"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 130 }
+			position = { x = 385 y = 138 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t2"
-			position = { x = 393 y = 132 }
+			position = { x = 393 y = 140 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1853,12 +1864,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg3"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 150 }
+			position = { x = 385 y = 158 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t3"
-			position = { x = 393 y = 152 }
+			position = { x = 393 y = 160 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1870,12 +1881,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg4"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 170 }
+			position = { x = 385 y = 178 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t4"
-			position = { x = 393 y = 172 }
+			position = { x = 393 y = 180 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1887,12 +1898,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg5"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 190 }
+			position = { x = 385 y = 198 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t5"
-			position = { x = 393 y = 192 }
+			position = { x = 393 y = 200 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1904,12 +1915,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg6"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 210 }
+			position = { x = 385 y = 218 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t6"
-			position = { x = 393 y = 212 }
+			position = { x = 393 y = 220 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1921,12 +1932,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_tbg7"
 			quadTextureSprite = "GFX_v2cmd_row_340x19"
-			position = { x = 385 y = 230 }
+			position = { x = 385 y = 238 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_t7"
-			position = { x = 393 y = 232 }
+			position = { x = 393 y = 240 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 324
@@ -1938,7 +1949,7 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_pick"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 35 y = 258 }
+			position = { x = 35 y = 266 }
 			buttonText = " "
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
@@ -1947,7 +1958,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pick_text"
-			position = { x = 39 y = 266 }
+			position = { x = 39 y = 274 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 136
@@ -1959,7 +1970,7 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_mine"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 217 y = 258 }
+			position = { x = 217 y = 266 }
 			buttonText = "+ My people"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
@@ -1969,7 +1980,7 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_theirs"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 399 y = 258 }
+			position = { x = 399 y = 266 }
 			buttonText = "+ Their people"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
@@ -1979,7 +1990,7 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_clear"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 581 y = 258 }
+			position = { x = 581 y = 266 }
 			buttonText = "Clear"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
@@ -1989,12 +2000,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_phb"
 			quadTextureSprite = "GFX_v2cmd_hdr_690x22"
-			position = { x = 35 y = 304 }
+			position = { x = 35 y = 312 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_ptitle"
-			position = { x = 45 y = 306 }
+			position = { x = 45 y = 314 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 300
@@ -2005,7 +2016,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pchance"
-			position = { x = 515 y = 306 }
+			position = { x = 515 y = 314 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 200
@@ -2016,7 +2027,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pw0"
-			position = { x = 45 y = 332 }
+			position = { x = 45 y = 340 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 500
@@ -2027,7 +2038,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pw1"
-			position = { x = 45 y = 350 }
+			position = { x = 45 y = 358 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 500
@@ -2038,7 +2049,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pw2"
-			position = { x = 45 y = 368 }
+			position = { x = 45 y = 376 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 500
@@ -2049,7 +2060,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pw3"
-			position = { x = 45 y = 386 }
+			position = { x = 45 y = 394 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 500
@@ -2060,7 +2071,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_pw4"
-			position = { x = 45 y = 404 }
+			position = { x = 45 y = 412 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 500
@@ -2072,7 +2083,7 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_prov"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 581 y = 338 }
+			position = { x = 581 y = 346 }
 			buttonText = "Propose"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
@@ -2082,12 +2093,12 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_ohb"
 			quadTextureSprite = "GFX_v2cmd_hdr_690x22"
-			position = { x = 35 y = 432 }
+			position = { x = 35 y = 440 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_otitle"
-			position = { x = 45 y = 434 }
+			position = { x = 45 y = 442 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 300
@@ -2098,7 +2109,7 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_popchance"
-			position = { x = 515 y = 434 }
+			position = { x = 515 y = 442 }
 			font = "vic_18_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 200
@@ -2109,61 +2120,70 @@ guiTypes = {
 		}
 		instantTextBoxType = {
 			name = "v2tr_popsum"
-			position = { x = 45 y = 460 }
+			position = { x = 45 y = 468 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
-			maxWidth = 500
-			maxHeight = 18
-			text = " "
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2tr_ow0"
-			position = { x = 45 y = 480 }
-			font = "Arial12_black"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 500
-			maxHeight = 18
-			text = " "
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2tr_ow1"
-			position = { x = 45 y = 498 }
-			font = "Arial12_black"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 500
-			maxHeight = 18
-			text = " "
-			format = left
-			fixedsize = yes
-		}
-		instantTextBoxType = {
-			name = "v2tr_ow2"
-			position = { x = 45 y = 516 }
-			font = "Arial12_black"
-			borderSize = { x = 0 y = 0 }
-			maxWidth = 500
+			maxWidth = 670
 			maxHeight = 18
 			text = " "
 			format = left
 			fixedsize = yes
 		}
 		guiButtonType = {
-			name = "v2tr_popopt"
+			name = "v2tr_opt0"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 581 y = 460 }
+			position = { x = 35 y = 490 }
 			buttonText = " "
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
-			tooltipText = "V2CMD_TT_V2TR_POPOPT"
+			tooltipText = "V2CMD_TT_V2TR_OPT0"
 		}
 		instantTextBoxType = {
-			name = "v2tr_popopt_text"
-			position = { x = 585 y = 468 }
+			name = "v2tr_opt0_text"
+			position = { x = 39 y = 498 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 136
+			maxHeight = 18
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2tr_opt1"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 185 y = 490 }
+			buttonText = " "
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "V2CMD_TT_V2TR_OPT1"
+		}
+		instantTextBoxType = {
+			name = "v2tr_opt1_text"
+			position = { x = 189 y = 498 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 136
+			maxHeight = 18
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2tr_opt2"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 335 y = 490 }
+			buttonText = " "
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "V2CMD_TT_V2TR_OPT2"
+		}
+		instantTextBoxType = {
+			name = "v2tr_opt2_text"
+			position = { x = 339 y = 498 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 136
@@ -2175,22 +2195,65 @@ guiTypes = {
 		guiButtonType = {
 			name = "v2tr_pop"
 			quadTextureSprite = "GFX_button_standard_144"
-			position = { x = 581 y = 498 }
+			position = { x = 581 y = 490 }
 			buttonText = "Swap"
 			buttonFont = "vic_18_black"
 			Orientation = "UPPER_LEFT"
 			clicksound = click
 			tooltipText = "V2CMD_TT_V2TR_POP"
 		}
+		instantTextBoxType = {
+			name = "v2tr_ow0"
+			position = { x = 45 y = 530 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_ow1"
+			position = { x = 45 y = 548 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2tr_bothtext"
+			position = { x = 45 y = 582 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 500
+			maxHeight = 20
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2tr_both"
+			quadTextureSprite = "GFX_button_standard_177"
+			position = { x = 548 y = 574 }
+			buttonText = "Propose both"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "V2CMD_TT_V2TR_BOTH"
+		}
 		guiButtonType = {
 			name = "v2tr_sbar"
 			quadTextureSprite = "GFX_v2cmd_hdr_690x24"
-			position = { x = 35 y = 546 }
+			position = { x = 35 y = 616 }
 			Orientation = "UPPER_LEFT"
 		}
 		instantTextBoxType = {
 			name = "v2tr_status"
-			position = { x = 45 y = 548 }
+			position = { x = 45 y = 618 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 670
