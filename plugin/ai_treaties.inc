@@ -11,7 +11,7 @@
 // of every mod on the command line (e.g. the "TGC Treaties" mod). Same id later = replaces the earlier entry.
 struct HistTreaty {
     std::string id, title, why, source;
-    int y0 = 0, y1 = 0, kind = 0, majority = 0, monthly = 15;
+    int y0 = 0, y1 = 0, kind = 0, majority = 0, monthly = 15, mtth = 0, accept = 100;
     std::vector<std::string> from, to, cores_of, back_cores_of;
     std::vector<uint32_t> provs, back, to_owns;   // regions already expanded into ids
 };
@@ -125,6 +125,8 @@ int load_treaty_file(const char* path) {
             else if (k == "to_owns") add_ids(h.to_owns, v, false, nullptr);
             else if (k == "majority") h.majority = one == "yes" || one == "1";
             else if (k == "chance") h.monthly = atoi(one.c_str());
+            else if (k == "mtth") h.mtth = atoi(one.c_str());
+            else if (k == "accept") h.accept = atoi(one.c_str());
         }
         tk.next();
         if (h.id.empty() || h.from.empty() || h.to.empty() || !h.y0) continue;
@@ -476,7 +478,10 @@ int hist_try(const HistTreaty& h, int year) {
     }
     if (h.kind == 1) pick_provinces((uint32_t)to, h.back, h.back_cores_of, false, (uint32_t)from, back, nb, 64);
     if (relation((uint32_t)from, (uint32_t)to) < -150) return 0;  // bitter enemies do not sign
-    if ((int)(rnd() % 100) >= h.monthly) return 0;
+    // same odds as the original: a decision the AI takes once allowed (chance per month) or an event's
+    // mean time to happen (half of the time it has fired after mtth months)
+    double p = h.mtth > 0 ? 1.0 - pow(0.5, 1.0 / h.mtth) : h.monthly / 100.0;
+    if ((rnd() % 100000) >= (uint32_t)(p * 100000)) return 0;
     uint32_t me = player_index();
     if (h.kind == 2) {
         PopEval pe = judge_population((uint32_t)to, (uint32_t)from);
@@ -498,6 +503,14 @@ int hist_try(const HistTreaty& h, int year) {
         return 1;
     }
     char b[220];
+    // the AI side answers with the original event's odds (ai_chance of its options)
+    if ((int)(rnd() % 100) >= h.accept) {
+        hist_mark(h, (uint32_t)from, (uint32_t)to);
+        snprintf(b, sizeof(b), "%s: %s turned it down.", h.title.c_str(), cn((uint32_t)from));
+        logf("treaty %s refused (accept %d%%)", h.id.c_str(), h.accept);
+        toast(b);
+        return 1;
+    }
     if (h.kind == 2) {
         do_pop_swap((uint32_t)to, (uint32_t)from);
         snprintf(b, sizeof(b), "%s: %s and %s exchange their minorities.", h.title.c_str(), cn((uint32_t)from), cn((uint32_t)to));
@@ -703,7 +716,8 @@ extern "C" ConsoleResult* __cdecl cmd_treaty_history(ConsoleResult* out, ArgVect
         else if (gd.year < h.y0) st = "future";
         else if (to < 0 || from < 0) st = "countries missing";
         else st = "possible now";
-        t.add("%d-%d %s: %s\n", h.y0, h.y1, h.title.c_str(), st);
+        if (h.mtth) t.add("%d-%d %s: %s  (mtth %d months, AI accepts %d%%)\n", h.y0, h.y1, h.title.c_str(), st, h.mtth, h.accept);
+        else t.add("%d-%d %s: %s  (%d%%/month, AI accepts %d%%)\n", h.y0, h.y1, h.title.c_str(), st, h.monthly, h.accept);
     }
     return finish(out, true, t);
 }
