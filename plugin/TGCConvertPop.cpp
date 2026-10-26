@@ -2970,11 +2970,26 @@ struct PopEval {
 // source's. Cultures both countries count as their own (e.g. German in Germany and in Austria-Hungary) stay.
 // A pop of culture c may be sent to `target`: the target's primary culture always comes home; the source's
 // primary culture never leaves; an accepted culture moves only if the source does not count it as its own.
+// Culture groups come from common/cultures.txt of the active mod (germanic = { north_german south_german ... }).
+int culture_group_of(uintptr_t c);
+// Rules (both countries' views count):
+//  - the source's primary culture never leaves it;
+//  - a culture only the target counts as its own goes to the target;
+//  - a culture both count as their own goes to the target if it is of the target's nation (culture group of the
+//    target's primary culture) and not of the source's (Bohemian Germans -> Germany, but Bavarians stay in
+//    Germany in a swap with Austria: both are germanic);
+//  - a culture neither counts goes to the target if it is of the target's culture group and not the source's.
 bool movable_to(uintptr_t target, uintptr_t source, uintptr_t c) {
-    if (!c || !target || !source || !national_culture(target, c)) return false;
-    if (rd<uintptr_t>(source + 0xE64) == c) return false;
-    if (rd<uintptr_t>(target + 0xE64) == c) return true;
-    return !national_culture(source, c);
+    if (!c || !target || !source) return false;
+    uintptr_t pt = rd<uintptr_t>(target + 0xE64), ps = rd<uintptr_t>(source + 0xE64);
+    if (c == ps) return false;
+    bool nt = national_culture(target, c), ns = national_culture(source, c);
+    int cg = culture_group_of(c), tg = culture_group_of(pt), sg = culture_group_of(ps);
+    bool kin_of_target = cg >= 0 && cg == tg && cg != sg;
+    if (nt && !ns) return true;
+    if (nt && ns) return kin_of_target || (c == pt && cg != sg);
+    if (!nt && !ns) return kin_of_target;
+    return false;
 }
 // Candidate cultures for the "one culture" options: their nationals living with you, yours living with them.
 void popcult_refresh(uint32_t me, uint32_t ai) {
@@ -3819,6 +3834,7 @@ void read_settings() {
     g_dyn_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_ai_years", 10, g_host->config_file);
     g_req_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_request_years", 6, g_host->config_file);
     g_migration_loss = GetPrivateProfileIntW(L"convert_pop", L"migration_loss", 10, g_host->config_file);
+    load_culture_groups();
     g_transport_cost = GetPrivateProfileIntW(L"convert_pop", L"transport_cost", 50, g_host->config_file);
     if (g_ai_treaties) { load_treaties(); install_secede_watch(); }
     const char* cmd = GetCommandLineA();
@@ -3828,7 +3844,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-28b (game names; primary culture always comes home; exact migration under the pop cap)");
+    logf("TGC Convert Pop build 2026-10-28c (population: culture groups decide who goes home)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

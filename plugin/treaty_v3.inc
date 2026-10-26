@@ -105,6 +105,27 @@ TScore treaty_score(uint32_t me, uint32_t ai, double extra_money) {
         draft_pop();
         t.pop_get = pe.they_get;
         t.pop_lose = pe.they_lose;
+        static uint32_t logged_for = 0;
+        if (g_tr_pop_mine && pe.they_lose == 0 && logged_for != ai) {  // explain why nobody would come home
+            logged_for = ai;
+            static uintptr_t provs[2048];
+            uintptr_t cul[32]; uint64_t ppl[32]; int nc = 0;
+            int np = owned_provinces((int)ai, provs, 2048);
+            for (int i = 0; i < np; ++i)
+                for_each_pop(provs[i], [&](uintptr_t pop, int) {
+                    if (!pop_alive(pop)) return;
+                    uintptr_t c = rd<uintptr_t>(pop + 0x6C);
+                    int k = 0;
+                    while (k < nc && cul[k] != c) ++k;
+                    if (k == nc && nc < 32) { cul[nc] = c; ppl[nc++] = 0; }
+                    if (k < nc) ppl[k] += rd<uint32_t>(pop + 0x58);
+                });
+            for (int k = 0; k < nc; ++k)
+                logf("population check %s: %s %llu people, yours %d theirs %d group %d (your group %d, theirs %d) -> %s", cn(ai),
+                     culture_name(cul[k]), (unsigned long long)ppl[k], national_culture(cm, cul[k]), national_culture(ca, cul[k]),
+                     culture_group_of(cul[k]), culture_group_of(rd<uintptr_t>(cm + 0xE64)), culture_group_of(rd<uintptr_t>(ca + 0xE64)),
+                     movable_to(cm, ca, cul[k]) ? "comes home" : "stays");
+        }
         if (!pe.e.possible) { snprintf(t.block, sizeof(t.block), "Population: %s", pe.e.n ? pe.e.why[pe.e.n - 1] : "nothing to move."); return t; }
         char n1[24], n2[24];
         fmt_people(pe.they_get, n1, sizeof(n1));

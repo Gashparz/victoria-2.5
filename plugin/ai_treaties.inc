@@ -215,6 +215,54 @@ void load_treaties() {
     }
     logf("treaties: %d historical treaties loaded, %d run by the game's own decisions/events", (int)g_hist.size(), nn);
 }
+// ---- culture groups (common/cultures.txt of the active mod) ----
+std::vector<std::pair<std::string, int>> g_culture_group;   // culture name -> group index
+std::vector<std::string> g_group_names;
+std::vector<std::pair<uintptr_t, int>> g_group_cache;
+void load_culture_groups() {
+    std::vector<std::string> mods = mod_paths();
+    std::string path = "common\\cultures.txt", s;
+    for (int i = (int)mods.size() - 1; i >= 0; --i) {
+        std::string p = mods[i] + "\\common\\cultures.txt";
+        if (GetFileAttributesA(p.c_str()) != INVALID_FILE_ATTRIBUTES) { path = p; break; }
+    }
+    if (!read_file(path.c_str(), s)) { logf("cultures: %s not readable", path.c_str()); return; }
+    Tok tk;
+    tokenize(s, tk);
+    g_culture_group.clear(); g_group_names.clear(); g_group_cache.clear();
+    while (!tk.eof()) {
+        std::string group = tk.next();
+        if (tk.peek() != "=") continue;
+        tk.next();
+        if (tk.peek() != "{") { tk.next(); continue; }
+        tk.next();
+        int gi = (int)g_group_names.size();
+        g_group_names.push_back(group);
+        while (!tk.eof() && tk.peek() != "}") {
+            std::string k = tk.next();
+            if (tk.peek() != "=") continue;
+            tk.next();
+            if (tk.peek() != "{") { tk.next(); continue; }
+            // a block inside a group: a culture if it has a colour
+            size_t start = tk.i;
+            skip_value(tk);
+            bool culture = false;
+            for (size_t j = start; j < tk.i; ++j) if (tk.t[j] == "color") { culture = true; break; }
+            if (culture) g_culture_group.push_back({k, gi});
+        }
+        tk.next();
+    }
+    logf("cultures: %d cultures in %d groups from %s", (int)g_culture_group.size(), (int)g_group_names.size(), path.c_str());
+}
+int culture_group_of(uintptr_t c) {
+    if (!c) return -1;
+    for (auto& e : g_group_cache) if (e.first == c) return e.second;
+    const char* n = culture_name(c);
+    int g = -1;
+    for (auto& e : g_culture_group) if (e.first == n) { g = e.second; break; }
+    if (g_group_cache.size() < 4096) g_group_cache.push_back({c, g});
+    return g;
+}
 // provinces a country owns among `ids` plus those that are cores of `cores`
 void pick_provinces(uint32_t owner, const std::vector<uint32_t>& ids, const std::vector<std::string>& cores, bool majority,
                     uint32_t nation, uint32_t* out, int& n, int max) {
