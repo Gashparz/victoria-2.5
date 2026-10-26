@@ -57,8 +57,8 @@ guiTypes = {
 	windowType = {
 		name = "v2cmd_window"
 		backGround = "Background"
-		position = { x = -380 y = -258 }
-		size = { x = 760 y = 517 }
+		position = { x = -380 y = -323 }
+		size = { x = 760 y = 646 }
 		moveable = 1
 		dontRender = ""
 		horizontalBorder = ""
@@ -297,9 +297,81 @@ guiTypes = {
 			format = left
 			fixedsize = yes
 		}
+		guiButtonType = {
+			name = "v2cmd_hhb"
+			quadTextureSprite = "GFX_v2cmd_hdr_690x22"
+			position = { x = 35 y = 465 }
+			Orientation = "UPPER_LEFT"
+		}
+		instantTextBoxType = {
+			name = "v2cmd_htitle"
+			position = { x = 45 y = 467 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 20
+			text = "RECENT TREATIES"
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_hist0"
+			position = { x = 45 y = 491 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_hist1"
+			position = { x = 45 y = 510 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_hist2"
+			position = { x = 45 y = 529 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_hist3"
+			position = { x = 45 y = 548 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2cmd_hist4"
+			position = { x = 45 y = 567 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 670
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
 		instantTextBoxType = {
 			name = "v2cmd_foot"
-			position = { x = 45 y = 467 }
+			position = { x = 45 y = 596 }
 			font = "Arial12_black"
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 670
@@ -2126,6 +2198,187 @@ guiTypes = {
 			text = " "
 			format = left
 			fixedsize = yes
+		}
+	}
+
+	windowType = {
+		name = "v2toast"
+		backGround = ""
+		position = { x = -320 y = -380 }
+		size = { x = 640 y = 34 }
+		moveable = 0
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+		guiButtonType = {
+			name = "v2toast_bg"
+			quadTextureSprite = "GFX_v2cmd_hdr_640x34"
+			position = { x = 0 y = 0 }
+			Orientation = "UPPER_LEFT"
+			tooltipText = "V2CMD_TT_V2TOAST_BG"
+		}
+		instantTextBoxType = {
+			name = "v2toast_text"
+			position = { x = 12 y = 8 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 616
+			maxHeight = 20
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+	}
+
+	windowType = {
+		name = "v2req_window"
+		backGround = "Background"
+		position = { x = -340 y = -165 }
+		size = { x = 680 y = 330 }
+		moveable = 1
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+
+		guiButtonType = {
+			name = "Background"
+			quadTextureSprite = "GFX_v2req_bg"
+		}
+		guiButtonType = {
+			name = "close_button"
+			quadTextureSprite = "GFX_main_close_button"
+			position = { x = 622 y = 22 }
+			Orientation = "UPPER_LEFT"
+			shortcut = "ESCAPE"
+		}
+		instantTextBoxType = {
+			name = "v2req_header"
+			position = { x = 0 y = 26 }
+			font = "vic_22_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 680
+			maxHeight = 30
+			text = " "
+			format = centre
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2req_sbar"
+			quadTextureSprite = "GFX_v2cmd_hdr_610x22"
+			position = { x = 35 y = 64 }
+			Orientation = "UPPER_LEFT"
+		}
+		instantTextBoxType = {
+			name = "v2req_sub"
+			position = { x = 45 y = 66 }
+			font = "vic_18_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 20
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l0"
+			position = { x = 45 y = 96 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l1"
+			position = { x = 45 y = 116 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l2"
+			position = { x = 45 y = 136 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l3"
+			position = { x = 45 y = 156 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l4"
+			position = { x = 45 y = 176 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l5"
+			position = { x = 45 y = 196 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		instantTextBoxType = {
+			name = "v2req_l6"
+			position = { x = 45 y = 216 }
+			font = "Arial12_black"
+			borderSize = { x = 0 y = 0 }
+			maxWidth = 590
+			maxHeight = 18
+			text = " "
+			format = left
+			fixedsize = yes
+		}
+		guiButtonType = {
+			name = "v2req_accept"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 180 y = 260 }
+			buttonText = "Accept"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "V2CMD_TT_V2REQ_ACCEPT"
+		}
+		guiButtonType = {
+			name = "v2req_decline"
+			quadTextureSprite = "GFX_button_standard_144"
+			position = { x = 356 y = 260 }
+			buttonText = "Decline"
+			buttonFont = "vic_18_black"
+			Orientation = "UPPER_LEFT"
+			clicksound = click
+			tooltipText = "V2CMD_TT_V2REQ_DECLINE"
 		}
 	}
 }

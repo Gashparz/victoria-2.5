@@ -1564,6 +1564,7 @@ struct NewCommand {
 extern "C" ConsoleResult* __cdecl cmd_treaty(ConsoleResult*, ArgVector*);
 extern "C" ConsoleResult* __cdecl cmd_treaty_propose(ConsoleResult*, ArgVector*);
 extern "C" ConsoleResult* __cdecl cmd_treaty_population(ConsoleResult*, ArgVector*);
+extern "C" ConsoleResult* __cdecl cmd_treaty_history(ConsoleResult*, ArgVector*);
 extern "C" ConsoleResult* __cdecl cmd_bloc_identity(ConsoleResult*, ArgVector*);
 extern "C" ConsoleResult* __cdecl cmd_bloc_leader(ConsoleResult*, ArgVector*);
 extern "C" ConsoleResult* __cdecl cmd_bloc_invite(ConsoleResult*, ArgVector*);
@@ -1597,6 +1598,8 @@ const NewCommand kCommands[] = {
     {"bloc_add", "blocadd", "Puts countries into a bloc (mega alliance): in a war, all living members join the side of the member in it.",
      (void*)&cmd_bloc_add, 2, {"bloc name", "tags"}},
     {"bloc_remove", "blocremove", "Takes countries out of their bloc.", (void*)&cmd_bloc_remove, 1, {"tags"}},
+    {"treaty_history", "treatyhistory", "Lists the historical treaties the AI can sign; 'treaty_history request' makes an AI ask you now.",
+     (void*)&cmd_treaty_history, 1, {"<request>"}},
     {"bloc_list", "bloclist", "Lists the blocs and their members.", (void*)&cmd_bloc_list, 1, {"<bloc name>"}},
     {"bloc_map", "blocmap", "Toggles the bloc map: the political map mode shows each bloc in its own colour.",
      (void*)&cmd_bloc_map, 1, {"<on|off>"}},
@@ -1858,6 +1861,7 @@ extern "C" void __cdecl tcp_on_bloc_back() {
 }
 
 void treaty_subscribe_cmd(void* win);
+void hist_fill(void* win);
 extern "C" void __cdecl tcp_on_tab_click() {
     if (!g_cmdwin) {
         g_cmdwin = gui_create("v2cmd_window");
@@ -1866,11 +1870,13 @@ extern "C" void __cdecl tcp_on_tab_click() {
         subscribe(g_cmdwin, "v2cmd_blocs", g_blocs_btn_glue, &tcp_blocs_click_thunk);
         treaty_subscribe_cmd(g_cmdwin);
         logf("tab: command window created");
+        hist_fill(g_cmdwin);
         win_show(g_cmdwin, true);
         if (win_visible(g_blocwin)) win_show(g_blocwin, false);
         return;
     }
     bool show = !win_visible(g_cmdwin);
+    if (show) hist_fill(g_cmdwin);
     win_show(g_cmdwin, show);
     if (show && win_visible(g_blocwin)) win_show(g_blocwin, false);
 }
@@ -2255,6 +2261,7 @@ int current_month() {
     }
     return 11;
 }
+void ai_treaties_monthly();
 void __stdcall daytick_hook(uintptr_t world) {
     {
         PerfScope ps(P_DAY_GAME);
@@ -2265,6 +2272,7 @@ void __stdcall daytick_hook(uintptr_t world) {
         {
             PerfScope ps(P_DAY_OURS);
             bloc_monthly();
+            ai_treaties_monthly();
         }
         perf_report();
     }
@@ -2676,6 +2684,7 @@ _tcp_diplo_invite_thunk:
 void treaty_frame_sync(bool open, uintptr_t prov);
 uintptr_t selected_province();
 void dipbar_sync();
+void ai_treaties_frame();
 int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     int r = g_idler_orig(self, edx, a);
     if (!g_topbar || !g_layer || !g_blocs_ok) return r;
@@ -2687,6 +2696,7 @@ int __fastcall idler_hook(void* self, void* edx, uint32_t a) {
     bool open = diplomacy_open(&sel);
     treaty_frame_sync(open, open ? selected_province() : 0);
     dipbar_sync();
+    ai_treaties_frame();
     return r;
 }
 void install_diplo_button() {
@@ -3333,6 +3343,9 @@ asm(".text\n"
     "    .globl _tcp_dip_treaty_thunk\n_tcp_dip_treaty_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_treaty\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_dip_bloc_thunk\n_tcp_dip_bloc_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_bloc\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_dip_blocs_thunk\n_tcp_dip_blocs_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_dip_blocs\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_toast_thunk\n_tcp_toast_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_toast\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_req_acc_thunk\n_tcp_req_acc_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_req_acc\n    popfl\n    popal\n    ret\n"
+    "    .globl _tcp_req_dec_thunk\n_tcp_req_dec_thunk:\n    pushal\n    pushfl\n    cld\n    call  _tcp_on_req_dec\n    popfl\n    popal\n    ret\n"
     "    .globl _tcp_dipctor_hook\n_tcp_dipctor_hook:\n    movl  4(%esp), %eax\n    movl  %eax, _g_dipobj\n    pushl %ebp\n    movl  %esp, %ebp\n    pushl $-1\n    jmp   *_g_dipctor_cont\n");
 namespace {
 
@@ -3386,6 +3399,7 @@ void install_dipwin_capture() {
     logf(write_code(R(VA_DIPWIN_CTOR), jmp, 5) ? "diplomacy: window hook installed" : "diplomacy: VirtualProtect failed");
 }
 
+#include "ai_treaties.inc"
 // ---- console ----
 extern "C" ConsoleResult* __cdecl cmd_treaty(ConsoleResult* out, ArgVector* args) {
     init_result(out);
@@ -3432,7 +3446,7 @@ extern "C" ConsoleResult* __cdecl cmd_treaty_population(ConsoleResult* out, ArgV
     return reply(out, true, "%s", g_tr_status);
 }
 
-void drop_diplo_window() { win_destroy(g_diplowin); win_destroy(g_traddwin); win_destroy(g_treatywin); win_destroy(g_dipbar); }
+void drop_diplo_window() { win_destroy(g_diplowin); win_destroy(g_traddwin); win_destroy(g_treatywin); win_destroy(g_dipbar); win_destroy(g_toast); win_destroy(g_reqwin); }
 
 void install_bloc_tick() {
     uintptr_t site = R(VA_DAYTICK_CALL);
@@ -3517,6 +3531,9 @@ void read_settings() {
     g_fix_merge_everywhere = GetPrivateProfileIntW(L"convert_pop", L"fix_merge_everywhere", 0, g_host->config_file) != 0;
     g_tab_enabled = GetPrivateProfileIntW(L"convert_pop", L"topbar_tab", 1, g_host->config_file) != 0;
     g_blocs_enabled = GetPrivateProfileIntW(L"convert_pop", L"blocs", 1, g_host->config_file) != 0;
+    g_ai_treaties = GetPrivateProfileIntW(L"convert_pop", L"ai_treaties", 1, g_host->config_file) != 0;
+    g_dyn_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_ai_years", 10, g_host->config_file);
+    g_req_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_request_years", 6, g_host->config_file);
     const char* cmd = GetCommandLineA();
     char lower[4096];
     size_t n = cmd ? strlen(cmd) : 0;
@@ -3524,7 +3541,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-26d (diplomacy bar closes the diplomacy screen; bloc button logs its result)");
+    logf("TGC Convert Pop build 2026-10-27b (AI treaties: historical + plausible, requests to the player)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

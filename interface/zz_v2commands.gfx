@@ -8,7 +8,7 @@ spriteTypes = {
 	}
 	corneredTileSpriteType = {
 		name = "GFX_v2cmd_bg"
-		size = { x = 760 y = 517 }
+		size = { x = 760 y = 646 }
 		textureFile = "gfx\\interface\\v2cmd_frame.tga"
 		borderSize = { x = 94 y = 94 }
 	}
@@ -51,6 +51,24 @@ spriteTypes = {
 	corneredTileSpriteType = {
 		name = "GFX_v2cmd_hdr_690x24"
 		size = { x = 690 y = 24 }
+		textureFile = "gfx\\interface\\v2cmd_header.tga"
+		borderSize = { x = 3 y = 3 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2cmd_hdr_640x34"
+		size = { x = 640 y = 34 }
+		textureFile = "gfx\\interface\\v2cmd_header.tga"
+		borderSize = { x = 3 y = 3 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2req_bg"
+		size = { x = 680 y = 330 }
+		textureFile = "gfx\\interface\\v2cmd_frame.tga"
+		borderSize = { x = 94 y = 94 }
+	}
+	corneredTileSpriteType = {
+		name = "GFX_v2cmd_hdr_610x22"
+		size = { x = 610 y = 22 }
 		textureFile = "gfx\\interface\\v2cmd_header.tga"
 		borderSize = { x = 3 y = 3 }
 	}

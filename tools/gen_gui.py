@@ -171,6 +171,13 @@ for i, (k, t) in enumerate(ref):
     else:
         body.append(tbox(f"v2cmd_line{i}", 45, y, TXT, W - 90, 18, "left", t))
         y += 19
+y += 8
+body.append(deco("v2cmd_hhb", bar(W - 70), 35, y))
+body.append(tbox("v2cmd_htitle", 45, y + 2, HEAD, W - 90, 20, "left", "RECENT TREATIES"))
+y += 26
+for i in range(5):
+    body.append(tbox(f"v2cmd_hist{i}", 45, y, TXT, W - 90, 18))
+    y += 19
 y += 10
 body.append(tbox("v2cmd_foot", 45, y, TXT, W - 90, 18, "left",
                  "Log: the_grand_loader.log next to v2game.exe. Population totals refresh on the next game day."))
@@ -305,6 +312,42 @@ y += 48 + 3 * 18 + 12
 add(deco("v2tr_sbar", bar(W - 70, 24), 35, y))
 add(tbox("v2tr_status", 45, y + 2, TXT, W - 90, 20))
 assert y + 24 + 30 <= TH, y
+add('\t}\n')
+# ---------------- treaty news toast ----------------
+TW, THt = 640, 34
+add(f"""
+	windowType = {{
+		name = "v2toast"
+		backGround = ""
+		position = {{ x = -{TW//2} y = -380 }}
+		size = {{ x = {TW} y = {THt} }}
+		moveable = 0
+		dontRender = ""
+		horizontalBorder = ""
+		verticalBorder = ""
+		fullScreen = no
+		Orientation = "CENTER"
+""")
+tips["V2CMD_TT_V2TOAST_BG"] = "Treaty news. Click to dismiss; the last ones are listed in the BLOCS tab."
+add(f"""		guiButtonType = {{
+			name = "v2toast_bg"
+			quadTextureSprite = "{bar(TW, THt)}"
+			position = {{ x = 0 y = 0 }}
+			Orientation = "UPPER_LEFT"
+			tooltipText = "V2CMD_TT_V2TOAST_BG"
+		}}
+""")
+add(tbox("v2toast_text", 12, 8, HEAD, TW - 24, 20, "centre"))
+add('\t}\n')
+# ---------------- request from an AI country ----------------
+RW, RH = 680, 330
+add(window_head("v2req_window", RW, RH, "GFX_v2req_bg", "v2req_header"))
+add(deco("v2req_sbar", bar(RW - 70), 35, 64))
+add(tbox("v2req_sub", 45, 66, HEAD, RW - 90, 20, "left"))
+for i in range(7):
+    add(tbox(f"v2req_l{i}", 45, 96 + i * 20, TXT, RW - 90, 18))
+add(button("v2req_accept", RW // 2 - 160, RH - 70, "Accept", "Sign the treaty. Relations +15."))
+add(button("v2req_decline", RW // 2 + 16, RH - 70, "Decline", "Refuse. See the last line for the consequences."))
 add('\t}\n}\n')
 
 open(os.path.join(out, 'zz_v2commands.gui'), 'w', encoding='cp1252', newline='\r\n').write(''.join(o))

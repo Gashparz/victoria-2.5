@@ -18,3 +18,6 @@ V2CMD_TT_V2TR_CLEAR;Empty both lists.;;;;;;;;;;;;x
 V2CMD_TT_V2TR_PROV;Send the province exchange. A refusal costs 10 relations.;;;;;;;;;;;;x
 V2CMD_TT_V2TR_POPOPT;Which pops move: both ways, only theirs, only yours, or a single culture (click to cycle).;;;;;;;;;;;;x
 V2CMD_TT_V2TR_POP;Each side receives its own people from the other. Shared cultures stay. A refusal costs 5 relations.;;;;;;;;;;;;x
+V2CMD_TT_V2TOAST_BG;Treaty news. Click to dismiss, the last ones are listed in the BLOCS tab.;;;;;;;;;;;;x
+V2CMD_TT_V2REQ_ACCEPT;Sign the treaty. Relations +15.;;;;;;;;;;;;x
+V2CMD_TT_V2REQ_DECLINE;Refuse. See the last line for the consequences.;;;;;;;;;;;;x

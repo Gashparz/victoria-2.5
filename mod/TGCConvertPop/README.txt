@@ -99,6 +99,22 @@ Top bar tab "BLOCS" (experimental)
   Move the tab: edit position = { x = 1090 y = 0 } of "v2cmd_tab" in zz_v2commands.gui.
   Turn it off: topbar_tab=0 in mod\TGCConvertPop.ini. The log shows "tab: ..." lines.
 
+AI treaties
+  About 80-85% of what happens is real history: the AI signs historical treaties in their real years when
+  the world in your game allows it (both countries exist, the giver still owns the land, no war between them):
+  Aigun/Peking 1858-60, Danish Gold Coast 1850, Gadsden 1853, Turin 1860 (Savoy, Nice), Ionian Islands 1864,
+  Nicobar 1868, Alaska 1867, Dutch Gold Coast 1872, Saint Petersburg 1875 (Sakhalin <-> Kurils), Cyprus 1878,
+  Thessaly 1881, Heligoland 1890, the 1898 leases (Kiautschou, Weihaiwei, Port Arthur), Carolines 1899,
+  population exchanges 1913 / 1919 / 1923, Danish West Indies 1917, Schleswig 1920, Jubaland 1924, Saar 1935.
+  The rest are plausible deals made from the map: border swaps (each side gets its own people back),
+  cessions to a much stronger neighbour that has a core and the majority, arrangements inside a bloc,
+  population exchanges after conquests. Both sides judge them with the same rules as your treaty window.
+  When you are one of the parties, a window asks you: Accept or Decline (closing it = Decline; it expires
+  after 30 days). Refusing costs relations and the country remembers it.
+  News appear at the top of the screen and in the BLOCS tab under "Recent treaties".
+  Console: treaty_history  (status of every historical treaty)   treaty_history request  (an AI asks you now)
+  ini: ai_treaties=0 turns it off; treaty_ai_years / treaty_request_years set how often.
+
 What is installed in the game folder
   dinput8.dll           The Grand Loader (loads this plugin)
   lua51.dll             V2DLL from Victoria 2 Unofficial Patch 3.05 0.6.2.4
