@@ -13,18 +13,24 @@
 #   majority  yes = a province moves only if TO's nation is its majority (plebiscites)
 #   chance    percent per month inside the window (or mtth = months: mean time to happen, as in the game)
 #   accept    percent: how often the AI side accepts (taken from the original event's ai_chance); default 100
+#   native    "file:decision" or "file:event id" of the game's own version. When the active game files have it,
+#             the game runs the treaty itself (same conditions, same odds) and the plugin only recognises it
+#             (news, history, treaty_history). Without it, chance/mtth/accept above are used.
 #   source    where the treaty comes from (vanilla event, TGC event, history)
 
 treaty = { id = webster_ashburton years = { 1842 1846 } kind = cession from = { ENG CAN } to = { USA }
   provinces = { 250 158 } chance = 50 accept = 100
+  native = { "decisions/ENG.txt:webster_ashburton_treaty" }
   source = "TGC decision webster_ashburton_treaty (AI from 1842) -> event 44122 (both options cede)"
   title = "Webster-Ashburton Treaty" why = "Britain and the United States settle the Maine and Great Lakes border." }
 treaty = { id = danish_india years = { 1845 1860 } kind = cession from = { DEN } to = { ENG EIC }
   cores_of = { HND } chance = 50 accept = 100
+  native = { "decisions/Denmark.txt:selling_danish_india" }
   source = "TGC decision selling_danish_india (year 1845) -> event 36224 (A 100)"
   title = "Sale of Danish India" why = "Denmark sells Tranquebar and Serampore to Britain." }
 treaty = { id = danish_gold_coast years = { 1850 1865 } kind = cession from = { DEN } to = { ENG }
   provinces = { 1907 } chance = 50 accept = 100
+  native = { "decisions/Denmark.txt:selling_danish_ghana" }
   source = "TGC decision selling_danish_ghana (year 1850) -> event 36950 (A 100)"
   title = "Sale of the Danish Gold Coast" why = "Denmark sells its forts on the Gold Coast to Britain." }
 treaty = { id = gadsden years = { 1852 1856 } kind = cession from = { MEX } to = { USA }
@@ -32,18 +38,22 @@ treaty = { id = gadsden years = { 1852 1856 } kind = cession from = { MEX } to =
   title = "Gadsden Purchase" why = "Mexico sells the Mesilla valley and southern Arizona to the United States." }
 treaty = { id = aigun years = { 1857 1862 } kind = cession from = { QNG CHI MCK } to = { RUS }
   provinces = { 1081 1082 1083 1084 1085 } chance = 50 accept = 90
+  native = { "decisions/RUS.txt:peking_convention" "decisions/RUS.txt:convention_of_peking" }
   source = "vanilla decision peking_convention -> event 80000 (A 90 / B 10)"
   title = "Treaties of Aigun and Peking" why = "China cedes the lands north of the Amur and east of the Ussuri to Russia." }
 treaty = { id = flores years = { 1851 1870 } kind = cession from = { POR } to = { NET }
   provinces = { 1439 1444 } chance = 50 accept = 95
+  native = { "decisions/POR.txt:flores_sale" }
   source = "TGC decision flores_sale (AI from 1851) -> event 97125 (A 95 / B 5)"
   title = "Flores Purchase" why = "Portugal sells eastern Flores and the Solor islands to the Netherlands." }
 treaty = { id = belize years = { 1859 1880 } kind = cession from = { GUA UCA } to = { ENG BLZ }
   provinces = { 2190 } chance = 50 accept = 100
+  native = { "decisions/ENG.txt:wyke_aycinena_convention" }
   source = "TGC decision wyke_aycinena_convention (year 1859) -> event 1904191419 (A 100)"
   title = "Wyke-Aycinena Treaty" why = "Guatemala recognises British Honduras." }
 treaty = { id = mosquito_coast years = { 1850 1900 } kind = cession from = { ENG } to = { HON NIC UCA }
   provinces = { 2196 } mtth = 108 accept = 63
+  native = { "events/ENGFlavor.txt:209708" }
   source = "TGC event 209708 (MTTH 108 months, A 70) -> 209709 (A 90) -> 209706"
   title = "Wyke-Cruz Treaty" why = "Britain gives the Bay Islands and the Mosquito Coast to Honduras." }
 treaty = { id = turin years = { 1859 1862 } kind = cession from = { SAR ITA } to = { FRA }
@@ -54,6 +64,7 @@ treaty = { id = ionian years = { 1863 1866 } kind = cession from = { ION ENG } t
   title = "Union of the Ionian Islands" why = "Britain hands the Ionian Islands to Greece." }
 treaty = { id = alaska years = { 1866 1880 } kind = cession from = { RUS } to = { USA }
   provinces = { 1 2 3 4 5 2599 3317 3390 3391 3395 3408 3409 } chance = 50 accept = 80
+  native = { "decisions/ACW.txt:alaskan_purchase" "events/RUSFlavor.txt:32509" }
   source = "vanilla decision alaskan_purchase (year 1870 or after the ACW) -> event 32509 (A 80 / B 20)"
   title = "Alaska Purchase" why = "Russia sells Alaska to the United States for 7.2 million dollars." }
 treaty = { id = nicobar years = { 1867 1870 } kind = cession from = { DEN } to = { ENG }
@@ -61,6 +72,7 @@ treaty = { id = nicobar years = { 1867 1870 } kind = cession from = { DEN } to =
   title = "Sale of the Nicobar Islands" why = "Denmark sells the Nicobar Islands to Britain." }
 treaty = { id = dutch_gold_coast years = { 1870 1873 } kind = cession from = { NET } to = { ENG }
   provinces = { 1909 } chance = 50 accept = 85
+  native = { "decisions/VOC.txt:the_aceh_question" }
   source = "TGC decision the_aceh_question -> event 952503 (B 90) -> 952505 (A 95) -> 952508"
   title = "Anglo-Dutch Gold Coast Treaty" why = "The Netherlands cede their Gold Coast forts to Britain." }
 treaty = { id = st_petersburg_1875 years = { 1874 1877 } kind = swap from = { JAP } to = { RUS }
@@ -74,14 +86,17 @@ treaty = { id = thessaly years = { 1880 1883 } kind = cession from = { TUR } to 
   title = "Convention of Constantinople" why = "The Ottomans cede Thessaly and Arta to Greece under great power pressure." }
 treaty = { id = senegal_guinea years = { 1885 1900 } kind = swap from = { POR } to = { FRA }
   provinces = { 1792 } back = { 1878 } chance = 50 accept = 95
+  native = { "decisions/France.txt:senegal_gambia_border_treaty" }
   source = "TGC decision senegal_gambia_border_treaty -> event 955181 (A 95 / B 5)"
   title = "Franco-Portuguese Convention" why = "Portugal gives up the Casamance; France recognises Portuguese Guinea." }
 treaty = { id = heligoland years = { 1881 1900 } kind = cession from = { ENG } to = { GER PRU }
   provinces = { 533 } chance = 50 accept = 100
+  native = { "decisions/ENG.txt:treaty_of_heligoland" }
   source = "TGC decision treaty_of_heligoland (year 1881) -> event 33006 (A 100)"
   title = "Heligoland-Zanzibar Treaty" why = "Britain gives Heligoland to Germany in exchange for German claims in East Africa." }
 treaty = { id = franco_siamese years = { 1893 1895 } kind = cession from = { SIA } to = { FRA }
   cores_of = { WIA LUA CHK LAN LXA } chance = 100 accept = 100
+  native = { "events/IDOFlavor.txt:95661" }
   source = "TGC event 95661 (MTTH 1 day, no choice)"
   title = "Franco-Siamese Treaty" why = "Siam cedes the lands east of the Mekong (Laos) to French Indochina." }
 treaty = { id = kiautschou years = { 1897 1900 } kind = cession from = { QNG CHI } to = { GER PRU }
@@ -92,32 +107,39 @@ treaty = { id = weihaiwei years = { 1897 1900 } kind = cession from = { QNG CHI 
   title = "Weihaiwei Lease" why = "China leases Weihaiwei to Britain." }
 treaty = { id = port_arthur years = { 1897 1900 } kind = cession from = { QNG CHI MCK } to = { RUS }
   provinces = { 1481 } chance = 50 accept = 80
+  native = { "decisions/Treaty_Ports.txt:liaodong_lease" }
   source = "TGC decision liaodong_lease -> event 90909 (A 0.8 / B 0.2)"
   title = "Port Arthur Lease" why = "China leases Port Arthur to Russia." }
 treaty = { id = carolines years = { 1898 1901 } kind = cession from = { SPA } to = { GER PRU }
   provinces = { 2521 2518 2519 2579 610 } chance = 50 accept = 80
+  native = { "decisions/Germany.txt:purchase_spanish_pacific" }
   source = "TGC decision purchase_spanish_pacific -> event 33025 (A 80 / B 20) -> 33026"
   title = "German-Spanish Treaty" why = "Spain sells the Caroline, Northern Mariana and Palau islands to Germany." }
 treaty = { id = guyana_award years = { 1895 1905 } kind = cession from = { VNZ } to = { ENG GCO GUY }
   provinces = { 2243 } regions = { ENG_1979 } mtth = 6 accept = 100
+  native = { "events/VNZFlavor.txt:50021" }
   source = "TGC event 50021 (MTTH 6 months) -> 50028"
   title = "Paris Arbitral Award" why = "The tribunal gives most of the Essequibo to British Guiana." }
 treaty = { id = alaska_boundary years = { 1898 1911 } kind = cession from = { ENG CAN } to = { USA }
   provinces = { 2 } chance = 50 accept = 40
+  native = { "decisions/USA.txt:tratado_hay_herbert" }
   source = "TGC decision tratado_hay_herbert (1898-1911, relations 75) -> event 1904191424 (A 40 / B 60)"
   title = "Alaska Boundary Tribunal" why = "The panhandle coast goes to the United States." }
 treaty = { id = anglo_siamese years = { 1900 1915 } kind = cession from = { SIA PAT } to = { ENG EIC }
   provinces = { 1389 1391 } mtth = 3 accept = 95
+  native = { "events/East Indies.txt:97122" }
   source = "TGC event 97122 (MTTH 3 months) -> 97123 (A 0.95 / B 0.05)"
   title = "Anglo-Siamese Treaty" why = "Siam cedes Kedah, Kelantan, Perlis and Terengganu to British Malaya." }
 treaty = { id = bul_tur_1913 years = { 1913 1915 } kind = population from = { TUR } to = { BUL } chance = 15
   source = "history" title = "Ottoman-Bulgarian Convention" why = "Bulgaria and the Ottoman Empire exchange their minorities along the border." }
 treaty = { id = simla years = { 1914 1915 } kind = cession from = { TIB QNG CHI } to = { ENG HND }
   provinces = { 1593 } chance = 50 accept = 90
+  native = { "decisions/ENG.txt:simla_convention" }
   source = "TGC decision simla_convention -> event 131711 (A 90 / B 10)"
   title = "Simla Convention" why = "Tibet accepts the McMahon Line; Tawang goes to British India." }
 treaty = { id = danish_west_indies years = { 1890 1920 } kind = cession from = { DEN } to = { USA }
   provinces = { 2223 } chance = 50 accept = 95
+  native = { "decisions/USA.txt:selling_danish_virgin_islands" }
   source = "TGC decision selling_danish_virgin_islands (year 1890) -> event 36225 (A 0.95)"
   title = "Sale of the Danish West Indies" why = "Denmark sells its Caribbean islands to the United States." }
 treaty = { id = schleswig years = { 1919 1922 } kind = cession from = { GER PRU SWH } to = { DEN }
@@ -127,6 +149,7 @@ treaty = { id = gre_bul_1919 years = { 1919 1921 } kind = population from = { BU
   source = "history" title = "Convention of Neuilly" why = "Greece and Bulgaria agree on a reciprocal emigration of their minorities." }
 treaty = { id = leticia years = { 1922 1923 } kind = cession from = { PEU ECU } to = { CLM }
   provinces = { 2289 2284 } chance = 50 accept = 90
+  native = { "decisions/Ecuador.txt:salomon_lozano_treaty" }
   source = "TGC decision salomon_lozano_treaty -> event 46627 (A 90 / B 10)"
   title = "Salomon-Lozano Treaty" why = "Peru cedes the Leticia trapeze on the Amazon to Colombia." }
 treaty = { id = lausanne years = { 1922 1925 } kind = population from = { TUR } to = { GRE } chance = 20

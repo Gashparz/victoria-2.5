@@ -6,58 +6,72 @@
 treaty = { id = london_1839 years = { 1838 1840 } kind = cession from = { BEL } to = { NET }
   provinces = { 381 397 3313 3411 } regions = { NET_375 NET_378 NET_379 NET_382 NET_385 }
   chance = 50 accept = 72
+  native = { "decisions/ENG.txt:mediate_belgian_independence" }
   source = "TGC decision mediate_belgian_independence (AI from 1839) -> event 36709 (A 90) -> 36711 (A 80)"
   title = "Treaty of London" why = "Belgium is recognised; Limburg and Luxembourg's east go to the Netherlands." }
 treaty = { id = oregon years = { 1840 1850 } kind = swap from = { ENG CAN COL } to = { USA }
   regions = { USA_78 } back_regions = { CAN_13 ENG_22 } mtth = 1 accept = 86
+  native = { "events/USA_Expansion.txt:44150" }
   source = "TGC event 44150 (MTTH 1 month): B 75 -> 44151 (A 95), C 15 -> 44156 (A 98) -> 44152"
   title = "Oregon Treaty" why = "The Oregon Country is split along the 49th parallel." }
 treaty = { id = erzurum years = { 1846 1848 } kind = swap from = { PER } to = { TUR }
   regions = { TUR_885 TUR_890 TUR_923 TUR_931 TUR_935 ABU_1162 }
   back_regions = { RUS_1098 PER_1112 PER_1122 PER_1128 PER_1132 } chance = 100 accept = 100
+  native = { "events/PERFlavor.txt:300987" }
   source = "TGC event 300987 (MTTH 1 day) -> 300988 (A 100)"
   title = "Second Treaty of Erzurum" why = "The Ottomans and Persia settle their border along the lines of Zuhab." }
 treaty = { id = danish_gold_coast years = { 1850 1865 } kind = cession from = { DEN } to = { ENG }
   provinces = { 1907 } regions = { FRA_1907 ASH_1909 } chance = 50 accept = 100
+  native = { "decisions/Denmark.txt:selling_danish_ghana" }
   source = "TGC decision selling_danish_ghana (year 1850) -> event 36950 (A 100)"
   title = "Sale of the Danish Gold Coast" why = "Denmark sells its forts on the Gold Coast to Britain." }
 treaty = { id = jade years = { 1853 1854 } kind = cession from = { OLD } to = { PRU GER NGF }
   provinces = { 3259 } chance = 50 accept = 100
+  native = { "decisions/Germany.txt:the_jade_purchase" }
   source = "TGC decision the_jade_purchase (year 1853) -> event 40001 (A 100)"
   title = "Jade Treaty" why = "Oldenburg sells the Jade bay to Prussia for a North Sea naval base." }
 treaty = { id = aigun years = { 1857 1862 } kind = cession from = { QNG CHI MCK } to = { RUS }
   provinces = { 1081 1082 1083 1084 1085 } cores_of = { RUS } chance = 50 accept = 90
+  native = { "decisions/RUS.txt:peking_convention" "decisions/RUS.txt:convention_of_peking" }
   source = "vanilla decision peking_convention -> event 80000 (A 90 / B 10)"
   title = "Treaties of Aigun and Peking" why = "China cedes the lands north of the Amur and east of the Ussuri to Russia." }
 treaty = { id = chuguchak years = { 1863 1865 } kind = cession from = { XIN QNG CHI ALT } to = { RUS }
   cores_of = { RUS } chance = 50 accept = 90
+  native = { "decisions/RUS.txt:treaty_of_tarbagatay" }
   source = "TGC decision treaty_of_tarbagatay -> event 888888006 (A 90 / B 10)"
   title = "Treaty of Chuguchak" why = "China cedes the lands around Lake Balkhash and Issyk-Kul to Russia." }
 treaty = { id = dutch_gold_coast years = { 1870 1873 } kind = cession from = { NET } to = { ENG }
   provinces = { 1909 } regions = { FRA_1907 } chance = 50 accept = 85
+  native = { "decisions/VOC.txt:the_aceh_question" }
   source = "TGC decision the_aceh_question -> event 952503 (B 90) -> 952505 (A 95) -> 952508"
   title = "Anglo-Dutch Gold Coast Treaty" why = "The Netherlands cede their Gold Coast forts to Britain." }
 treaty = { id = st_barths years = { 1876 1878 } kind = cession from = { SWE } to = { FRA }
   provinces = { 3246 } chance = 50 accept = 50
+  native = { "decisions/France.txt:st_barths_question" }
   source = "TGC decision st_barths_question -> event 36623 (B 0.1 direct, A 0.7 referendum -> 36625/36626)"
   title = "Saint Barthelemy Referendum" why = "Sweden returns Saint Barthelemy to France after a referendum." }
 treaty = { id = argentina_chile years = { 1880 1882 } kind = swap from = { CHL } to = { ARG ARC LPL }
   provinces = { 2391 2398 2400 } back = { 2333 2397 } chance = 50 accept = 50
+  native = { "decisions/Argentina.txt:argentina_chile_border_treaty" }
   source = "TGC decision argentina_chile_border_treaty -> event 97092 (B 80) -> 97090 (B 60)"
   title = "Boundary Treaty of 1881" why = "Chile renounces Patagonia; Argentina accepts Chilean control of the Strait of Magellan." }
 treaty = { id = heligoland years = { 1881 1900 } kind = swap from = { ENG } to = { GER PRU NGF }
   provinces = { 533 } back_regions = { ENG_2024 ENG_2026 } back = { 1870 } chance = 50 accept = 100
+  native = { "decisions/ENG.txt:treaty_of_heligoland" }
   source = "TGC decision treaty_of_heligoland (year 1881) -> event 33006 (A 100)"
   title = "Heligoland-Zanzibar Treaty" why = "Britain gives Heligoland to Germany; Germany gives up Witu and its East African claims." }
 treaty = { id = colombia_venezuela years = { 1885 1910 } kind = cession from = { CLM } to = { VNZ }
   provinces = { 2270 2249 2278 } mtth = 120 accept = 10
+  native = { "events/CLMFlavor.txt:50033" }
   source = "TGC event 50033 (MTTH 120 months, A 10; B/C 80 go to arbitration 50034)"
   title = "Spanish Arbitral Award" why = "The Spanish crown arbitrates the Colombian-Venezuelan border." }
 treaty = { id = carolines years = { 1898 1901 } kind = cession from = { SPA } to = { GER PRU NGF }
   provinces = { 2521 2518 2519 2579 610 } regions = { SPA_610 SPA_2517 } chance = 50 accept = 80
+  native = { "decisions/Germany.txt:purchase_spanish_pacific" }
   source = "TGC decision purchase_spanish_pacific -> event 33025 (A 80 / B 20) -> 33026"
   title = "German-Spanish Treaty" why = "Spain sells the Caroline, Northern Mariana and Palau islands to Germany." }
 treaty = { id = bogota_1907 years = { 1907 1915 } kind = cession from = { CLM BOL PBC } to = { BRZ }
   provinces = { 3295 2263 } chance = 50 accept = 80
+  native = { "decisions/Brazil.txt:treaty_of_bogota" }
   source = "TGC decision treaty_of_bogota (year 1908) -> event 8220 (A 80 / B 20)"
   title = "Treaty of Bogota" why = "Colombia and Brazil settle their Amazon border; the disputed lands go to Brazil." }

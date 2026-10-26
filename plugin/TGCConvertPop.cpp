@@ -3402,6 +3402,28 @@ void install_dipwin_capture() {
 }
 
 #include "ai_treaties.inc"
+
+// CSecedeProvinceEffect::Execute (vtable slot 0x00E2B004 -> 0x00887420, thiscall (scope, x), ret 8). Hooked to
+// recognise historical treaties carried out by the game's own decisions and events. transfer_province calls
+// the function directly, so the plugin's own transfers are not seen here.
+constexpr uintptr_t VA_SECEDE_SLOT = 0x00E2B004;
+typedef void(__fastcall* SecedeFn)(void*, void*, void*, uint32_t);
+SecedeFn g_secede_orig = nullptr;
+void __fastcall secede_hook(void* eff, void* edx, void* scope, uint32_t x) {
+    uint32_t id = scope ? rd<uint32_t>((uintptr_t)scope + 0x10) : 0;
+    uintptr_t p = id ? get_province(id) : 0;
+    uint32_t before = p ? rd<uint32_t>(p + 0x12C) : 0;
+    g_secede_orig(eff, edx, scope, x);
+    uint32_t after = p ? rd<uint32_t>(p + 0x12C) : 0;
+    if (p && before && after && before != after && !g_hist.empty()) native_secede(id, before, after);
+}
+void install_secede_watch() {
+    uint32_t* slot = (uint32_t*)R(VA_SECEDE_SLOT);
+    if (*slot != R(VA_SECEDE_EXEC)) { logf("treaties: secede effect slot differs (%08X); game treaty events not recognised", *slot); return; }
+    g_secede_orig = (SecedeFn)R(VA_SECEDE_EXEC);
+    uint32_t v = (uint32_t)(uintptr_t)&secede_hook;
+    logf(write_code((uintptr_t)slot, &v, 4) ? "treaties: watching the game's own treaty events" : "treaties: VirtualProtect failed");
+}
 // ---- console ----
 extern "C" ConsoleResult* __cdecl cmd_treaty(ConsoleResult* out, ArgVector* args) {
     init_result(out);
@@ -3536,7 +3558,7 @@ void read_settings() {
     g_ai_treaties = GetPrivateProfileIntW(L"convert_pop", L"ai_treaties", 1, g_host->config_file) != 0;
     g_dyn_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_ai_years", 10, g_host->config_file);
     g_req_years = GetPrivateProfileIntW(L"convert_pop", L"treaty_request_years", 6, g_host->config_file);
-    if (g_ai_treaties) load_treaties();
+    if (g_ai_treaties) { load_treaties(); install_secede_watch(); }
     const char* cmd = GetCommandLineA();
     char lower[4096];
     size_t n = cmd ? strlen(cmd) : 0;
@@ -3544,7 +3566,7 @@ void read_settings() {
     for (size_t i = 0; i < n; ++i) lower[i] = (char)tolower((unsigned char)cmd[i]);
     lower[n] = 0;
     g_mod_active = strstr(lower, "tgcconvertpop") != nullptr;
-    logf("TGC Convert Pop build 2026-10-27d (treaties keep the original events' firing and acceptance odds)");
+    logf("TGC Convert Pop build 2026-10-27e (treaties with a game decision/event run natively; plugin recognises them)");
     logf("command line: %s", cmd ? cmd : "(none)");
     logf("mod %s, require_mod=%d, V2DLL %s", g_mod_active ? "enabled" : "not enabled", g_require_mod ? 1 : 0,
          GetModuleHandleA("lua51_real.dll") || GetFileAttributesA("lua51_real.dll") != INVALID_FILE_ATTRIBUTES ? "present" : "not found");

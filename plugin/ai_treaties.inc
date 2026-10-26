@@ -12,7 +12,8 @@
 struct HistTreaty {
     std::string id, title, why, source;
     int y0 = 0, y1 = 0, kind = 0, majority = 0, monthly = 15, mtth = 0, accept = 100;
-    std::vector<std::string> from, to, cores_of, back_cores_of;
+    std::vector<std::string> from, to, cores_of, back_cores_of, native;
+    bool native_found = false;   // the game's own decision/event exists: it fires with its own conditions
     std::vector<uint32_t> provs, back, to_owns;   // regions already expanded into ids
 };
 std::vector<HistTreaty> g_hist;
@@ -127,6 +128,7 @@ int load_treaty_file(const char* path) {
             else if (k == "chance") h.monthly = atoi(one.c_str());
             else if (k == "mtth") h.mtth = atoi(one.c_str());
             else if (k == "accept") h.accept = atoi(one.c_str());
+            else if (k == "native") h.native = v;
         }
         tk.next();
         if (h.id.empty() || h.from.empty() || h.to.empty() || !h.y0) continue;
@@ -181,7 +183,37 @@ void load_treaties() {
     load_regions(region.c_str());
     load_dir("mod\\TGCConvertPop\\treaties");
     for (auto& m : mods) if (_stricmp(m.c_str(), "mod/TGCConvertPop") != 0) load_dir(m + "\\treaties");
-    logf("treaties: %d historical treaties loaded", (int)g_hist.size());
+    // "native = { decisions/ENG.txt:webster_ashburton_treaty events/RUSFlavor.txt:32509 }": if the active game
+    // files contain that decision or event, the game runs the treaty itself (same conditions, same odds);
+    // the plugin only recognises it when it happens.
+    int nn = 0;
+    for (auto& h : g_hist) {
+        for (auto& ref : h.native) {
+            size_t c = ref.rfind(':');
+            if (c == std::string::npos || h.native_found) continue;
+            std::string rel = ref.substr(0, c), what = ref.substr(c + 1), text;
+            for (auto& r : rel) if (r == '/') r = '\\';
+            bool got = false;
+            for (int i = (int)mods.size() - 1; i >= 0 && !got; --i) got = read_file((mods[i] + "\\" + rel).c_str(), text);
+            if (!got) got = read_file(rel.c_str(), text);
+            if (!got) continue;
+            bool id = !what.empty() && isdigit((unsigned char)what[0]);
+            size_t pos = 0;
+            while ((pos = text.find(what, pos)) != std::string::npos) {
+                bool ok;
+                if (id) {  // "id = 32509"
+                    size_t q = pos;
+                    while (q > 0 && (text[q - 1] == ' ' || text[q - 1] == '\t' || text[q - 1] == '=')) --q;
+                    ok = q >= 2 && text.compare(q - 2, 2, "id") == 0 && !isdigit((unsigned char)text[pos + what.size()]);
+                } else ok = (pos == 0 || !(isalnum((unsigned char)text[pos - 1]) || text[pos - 1] == '_')) &&
+                            !(isalnum((unsigned char)text[pos + what.size()]) || text[pos + what.size()] == '_');
+                if (ok) { h.native_found = true; break; }
+                pos += what.size();
+            }
+        }
+        nn += h.native_found;
+    }
+    logf("treaties: %d historical treaties loaded, %d run by the game's own decisions/events", (int)g_hist.size(), nn);
 }
 // provinces a country owns among `ids` plus those that are cores of `cores`
 void pick_provinces(uint32_t owner, const std::vector<uint32_t>& ids, const std::vector<std::string>& cores, bool majority,
@@ -452,7 +484,7 @@ void hist_mark(const HistTreaty& h, uint32_t a, uint32_t b) {
 }
 // Returns 1 when it fired (or a request to the player was opened).
 int hist_try(const HistTreaty& h, int year) {
-    if (year < h.y0 || year > h.y1) return 0;
+    if (h.native_found || year < h.y0 || year > h.y1) return 0;
     int to = -1;
     for (auto& t : h.to) if (to < 0) to = alive_index(t.c_str());
     if (to < 0) return 0;
@@ -682,8 +714,59 @@ void ai_treaties_monthly() {
     // the player is asked separately, rarely
     else if (!fired && !g_req.active && (int)(rnd() % (uint32_t)(12 * std::max(g_req_years, 1))) == 0) player_request_try(g.year, false);
 }
+// ---- the game's own treaty decisions/events: recognised when their secede_province runs ----
+struct NativeHit { int entry; uint32_t from, to; uint32_t provs[16]; int n; };
+NativeHit g_native_hits[8];
+int g_native_n = 0;
+bool tag_in(const std::vector<std::string>& l, uint32_t idx) {
+    for (auto& t : l) if (country_index(t.c_str()) == (int)idx) return true;
+    return false;
+}
+bool entry_has_province(const HistTreaty& h, uintptr_t p, uint32_t id, bool back) {
+    const std::vector<uint32_t>& ids = back ? h.back : h.provs;
+    for (uint32_t x : ids) if (x == id) return true;
+    for (auto& t : back ? h.back_cores_of : h.cores_of) {
+        int c = country_index(t.c_str());
+        if (c > 0 && province_has_core(p, (uint32_t)c)) return true;
+    }
+    return false;
+}
+void native_secede(uint32_t id, uint32_t before, uint32_t after) {
+    uintptr_t p = get_province(id);
+    for (size_t i = 0; i < g_hist.size(); ++i) {
+        const HistTreaty& h = g_hist[i];
+        bool fwd = tag_in(h.from, before) && tag_in(h.to, after) && entry_has_province(h, p, id, false);
+        bool rev = h.kind == 1 && tag_in(h.to, before) && tag_in(h.from, after) && entry_has_province(h, p, id, true);
+        if (!fwd && !rev) continue;
+        hist_mark(h, before, after);
+        int k = 0;
+        while (k < g_native_n && g_native_hits[k].entry != (int)i) ++k;
+        if (k == g_native_n) {
+            if (g_native_n >= 8) return;
+            g_native_hits[k] = NativeHit{(int)i, fwd ? before : after, fwd ? after : before, {}, 0};
+            ++g_native_n;
+        }
+        NativeHit& nh = g_native_hits[k];
+        if (fwd && nh.n < 16) nh.provs[nh.n++] = id;
+        logf("treaty %s: the game's own event moved %s (%s -> %s)", h.id.c_str(), pn(id), cn(before), cn(after));
+        return;
+    }
+}
+void native_flush() {
+    for (int k = 0; k < g_native_n; ++k) {
+        NativeHit& nh = g_native_hits[k];
+        const HistTreaty& h = g_hist[nh.entry];
+        char names[160], b[240];
+        list_names(nh.provs, nh.n, names, sizeof(names));
+        if (nh.n) snprintf(b, sizeof(b), "%s: %s cedes %s to %s.", h.title.c_str(), cn(nh.from), names, cn(nh.to));
+        else snprintf(b, sizeof(b), "%s signed by %s and %s.", h.title.c_str(), cn(nh.from), cn(nh.to));
+        toast(b);
+    }
+    g_native_n = 0;
+}
 // per idler check (~10/s): toast timer, request expiry
 void ai_treaties_frame() {
+    if (g_native_n) native_flush();
     if (g_toast_pending) toast_show();
     if (g_req_pending && g_req.active) { g_req_pending = false; req_show(); }
     if (g_toast_ticks > 0 && --g_toast_ticks == 0) win_show(g_toast, false);
@@ -716,6 +799,7 @@ extern "C" ConsoleResult* __cdecl cmd_treaty_history(ConsoleResult* out, ArgVect
         else if (gd.year < h.y0) st = "future";
         else if (to < 0 || from < 0) st = "countries missing";
         else st = "possible now";
+        if (h.native_found && strcmp(st, "done") != 0) st = "run by the game's own decision/event (same conditions)";
         if (h.mtth) t.add("%d-%d %s: %s  (mtth %d months, AI accepts %d%%)\n", h.y0, h.y1, h.title.c_str(), st, h.mtth, h.accept);
         else t.add("%d-%d %s: %s  (%d%%/month, AI accepts %d%%)\n", h.y0, h.y1, h.title.c_str(), st, h.monthly, h.accept);
     }
