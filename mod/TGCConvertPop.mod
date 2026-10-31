@@ -1,2 +1,2 @@
-name = "Console Commands (any mod)"
+name = "Victoria 2.5"
 path = "mod/TGCConvertPop"

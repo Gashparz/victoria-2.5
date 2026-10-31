@@ -132,7 +132,7 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 			position = { x = 0 y = 40 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
-			text = "and treaties"
+			text = "Victoria 2.5"
 			maxWidth = 124
 			maxHeight = 16
 			format = centre
@@ -140,7 +140,7 @@ add('''	# Tab in the top bar (created by TGCConvertPop.dll next to Military). Mo
 		}
 	}
 ''')
-tips["V2CMD_TT_TAB"] = "Power blocs, treaties and the console command reference."
+tips["V2CMD_TT_TAB"] = "Victoria 2.5: power blocs, treaties and the console command reference."
 
 # ---------------- hub / command reference ----------------
 ref = [
@@ -182,7 +182,7 @@ y += 10
 body.append(tbox("v2cmd_foot", 45, y, TXT, W - 90, 18, "left",
                  "Log: the_grand_loader.log next to v2game.exe. Population totals refresh on the next game day."))
 H = y + 50
-add(window_head("v2cmd_window", W, H, "GFX_v2cmd_bg", "v2cmd_header", "Diplomacy+"))
+add(window_head("v2cmd_window", W, H, "GFX_v2cmd_bg", "v2cmd_header", "Victoria 2.5"))
 add(button("v2cmd_blocs", 150, 66, "Power Blocs", "Open the power bloc panel: members, cohesion, identity, map mode.",
            sprite="GFX_button_standard_177"))
 add(button("v2cmd_treaty", W - 150 - 177, 66, "Treaties", "Open the treaty window: exchange provinces or populations with another country.",
@@ -196,7 +196,7 @@ COLS = [(45, 200), (250, 120), (375, 95), (475, 95), (575, 140)]
 y0 = 176
 BH = y0 + 22 + ROWS * 20 + 150
 add(window_head("v2bloc_window", W, BH, "GFX_v2bloc_bg", "v2bloc_header"))
-add(button("v2bloc_back", 35, 22, "Back", "Back to the Diplomacy+ overview.", sprite="GFX_button_standard_144"))
+add(button("v2bloc_back", 35, 22, "Back", "Back to the Victoria 2.5 overview.", sprite="GFX_button_standard_144"))
 add(tbox("v2bloc_info1", 45, 62, TXT, W - 90, 18))
 add(tbox("v2bloc_info2", 45, 82, HEAD, W - 90, 22))
 add(tbox("v2bloc_bar", 45, 106, TXT, W - 90, 18))

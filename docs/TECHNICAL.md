@@ -112,3 +112,21 @@ The plugin destroys its windows when the topbar rebuilds or is destroyed, mirror
 - Capital: `country+0xBE4`.
 - Selected province: the province view's `+0x24`, a `Province*` (owner CTag at `+0x128`/`+0x12C`, id at `+0x58`).
 - A population exchange runs `migrate_all_pops <AI> <you> accepted` and `migrate_all_pops <you> <AI> accepted`, so the strict culture merge check applies.
+
+## Victoria 2.5 additions
+
+| VA | Use |
+|---|---|
+| `0x0061B820` | `CDiplomacyWindow` constructor (vtable `0x00E07450`), prologue detoured to capture the window. Gui window at `+0x4C` (visible byte `+0x67`); selected country CTag at `+0x388` / `+0x38C` |
+| `0x007538C0` | base window close handler (thiscall, no args): closes a screen the way its X button does |
+| `0x00E2B004` | `CSecedeProvinceEffect::Execute` slot (`0x00887420`, thiscall `(scope, x)`, ret 8). Scope `+0x10` = province id. Hooked to recognise treaties carried out by game decisions/events |
+| `0x00896580` | `CTreasuryEffect::Execute`: treasury is an int64 at country `+0xE78`, 1.0 = 32768 |
+| `0x004F97A0` | country display name (ECX = out `std::string`, EAX = country) |
+| province vtable `+0x1C` | province display name (thiscall, out `std::string*`) |
+| `0x00AAE91B` | `operator delete` (frees strings returned by the name routines) |
+| `0x007FCA30` | political palette builder; calls at `0x0066C4C3` and `0x00422A32` redirected for the bloc and treaty map modes |
+| `0x00683AB1` | call to `DayTick` (`0x006859C0`), redirected for monthly logic |
+| `0x00E0A350` | in-game idler vtable slot (`0x00654D80`), frame hook |
+| world `+0xB0C` | date: hours, `(days + 1825000) * 24` with 365-day years |
+
+Pop `+0x58` sizes are capped at 2,000,000 by `Pop_SetSize`; `migrate_all_pops` picks a destination where the merge stays under the cap.

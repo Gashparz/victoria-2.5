@@ -1,7 +1,7 @@
-V2CMD_TT_TAB;Power blocs, treaties and the console command reference.;;;;;;;;;;;;x
+V2CMD_TT_TAB;Victoria 2.5: power blocs, treaties and the console command reference.;;;;;;;;;;;;x
 V2CMD_TT_V2CMD_BLOCS;Open the power bloc panel: members, cohesion, identity, map mode.;;;;;;;;;;;;x
 V2CMD_TT_V2CMD_TREATY;Open the treaty window: exchange provinces or populations with another country.;;;;;;;;;;;;x
-V2CMD_TT_V2BLOC_BACK;Back to the Diplomacy+ overview.;;;;;;;;;;;;x
+V2CMD_TT_V2BLOC_BACK;Back to the Victoria 2.5 overview.;;;;;;;;;;;;x
 V2CMD_TT_V2BLOC_PREV;Show the previous bloc.;;;;;;;;;;;;x
 V2CMD_TT_V2BLOC_NEXT;Show the next bloc.;;;;;;;;;;;;x
 V2CMD_TT_V2BLOC_CREATE;Found a bloc led by you, or leave the bloc you are in (the most prestigious member takes over).;;;;;;;;;;;;x

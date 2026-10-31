@@ -1,2 +1,2 @@
-name = "TGC Treaties (TGC + Console Commands plugin)"
+name = "Victoria 2.5 - TGC Treaties"
 path = "mod/TGCTreaties"

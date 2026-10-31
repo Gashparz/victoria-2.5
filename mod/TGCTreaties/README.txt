@@ -1,5 +1,5 @@
-TGC Treaties - extra historical treaties for TGC (The Grand Combination)
-Needs: TGC and the Console Commands plugin (mod\TGCConvertPop\TGCConvertPop.dll).
+Victoria 2.5 - TGC Treaties: extra historical treaties for TGC (The Grand Combination)
+Needs: TGC and the Victoria 2.5 plugin (mod\TGCConvertPop\TGCConvertPop.dll).
 
 Tick "TGC Treaties" in the launcher together with TGC. The plugin then reads treaties\tgc.txt:
 the historical treaties of TGC's own events (Treaty of London 1839, Oregon 1846, Erzurum 1847, Jade 1853,

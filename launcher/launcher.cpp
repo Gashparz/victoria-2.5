@@ -275,7 +275,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE, LPWSTR, int show) {
     DWORD st = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
     AdjustWindowRect(&r, st, FALSE);
     int w = r.right - r.left, ht = r.bottom - r.top;
-    HWND h = CreateWindowW(L"V2Launcher", L"Victoria 2", st, (GetSystemMetrics(SM_CXSCREEN) - w) / 2,
+    HWND h = CreateWindowW(L"V2Launcher", L"Victoria 2.5", st, (GetSystemMetrics(SM_CXSCREEN) - w) / 2,
                            (GetSystemMetrics(SM_CYSCREEN) - ht) / 2, w, ht, nullptr, nullptr, inst, nullptr);
     ShowWindow(h, show);
     MSG msg;

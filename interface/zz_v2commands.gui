@@ -46,7 +46,7 @@ guiTypes = {
 			position = { x = 0 y = 40 }
 			font = "Arial12"
 			borderSize = { x = 0 y = 0 }
-			text = "and treaties"
+			text = "Victoria 2.5"
 			maxWidth = 124
 			maxHeight = 16
 			format = centre
@@ -84,7 +84,7 @@ guiTypes = {
 			borderSize = { x = 0 y = 0 }
 			maxWidth = 760
 			maxHeight = 30
-			text = "Diplomacy+"
+			text = "Victoria 2.5"
 			format = centre
 			fixedsize = yes
 		}

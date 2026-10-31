@@ -1,4 +1,4 @@
-# Victoria 2 launcher that remembers your mods
+# Victoria 2.5 launcher: remembers your mods
 
 Drop-in replacement for `victoria2.exe` (the program Steam starts). Rename the original to
 `victoria2_original.exe`, put this `victoria2.exe` in its place.
